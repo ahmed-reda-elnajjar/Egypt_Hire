@@ -3,14 +3,14 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// الكود ده بيسحب البيانات من Vercel اللي انت لسه ضايفها
+// كتبنا البيانات هنا مباشرة عشان الموقع يشتغل 100% ومنتوهش في الإعدادات
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_API_KEY,
-  authDomain: process.env.REACT_APP_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_APP_ID,
+  apiKey: "AIzaSyDwL-n1x-6gs6Wy_rJ1UbKdi4ukrOheLL4",
+  authDomain: "egypthire-d9e0e.firebaseapp.com",
+  projectId: "egypthire-d9e0e",
+  storageBucket: "egypthire-d9e0e.appspot.com",
+  messagingSenderId: "877480484065",
+  appId: "1:877480484065:web:7f4b1f019ba0ea77f9aba0"
 };
 
 const app = initializeApp(firebaseConfig);
