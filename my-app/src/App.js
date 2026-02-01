@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react"; // حذفت useRef غير المستخدم
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Languages, MapPin, Search, Briefcase, Zap, ArrowLeft, Send, Loader2,
   Globe, Instagram, Linkedin, Phone, Mail, DollarSign, Clock, Plus, Eye, EyeOff, Lock, 
   CheckCircle, Trash2, Edit3, User, Upload, LayoutGrid, Mic, StopCircle, GraduationCap, 
   Users, RotateCcw, ExternalLink, FileText, Download, LogIn, LogOut, X, Save 
-} from "lucide-react"; // حذفت LayoutDashboard و Copy لأنهم كانوا بيعملوا مشاكل
+} from "lucide-react";
 
 // تأكد أن ملف الترجمة موجود في نفس المجلد
 import { translations } from "./translations";
@@ -17,11 +17,11 @@ import {
 } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
 
-// إعدادات Cloudinary
+// إعدادات Cloudinary (للصور والصوتيات)
 const CLOUD_NAME = "dvefx5ts8"; 
 const UPLOAD_PRESET = "w1cmaa5s"; 
 
-// --- (تصحيح الخطأ) تعريف مكون الكارت هنا ---
+// --- مكون الكارت (FeatureCard) ---
 function FeatureCard({ icon, title, desc }) {
   return (
     <motion.div whileHover={{ y: -10 }} className="bg-white p-10 rounded-[3rem] shadow-sm border border-gray-50 flex flex-col items-center text-center">
@@ -42,6 +42,7 @@ export default function App() {
   const [lang, setLang] = useState("en"); 
   const [view, setView] = useState("home"); 
   const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true); // <-- حالة التحميل الجديدة
   const [selectedJob, setSelectedJob] = useState(null);
   const [filters, setFilters] = useState({ language: "all", location: "all" });
   
@@ -60,10 +61,12 @@ export default function App() {
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   }, [lang]);
 
+  // جلب البيانات مع إيقاف التحميل عند الانتهاء
   useEffect(() => {
     const q = query(collection(db, "jobs"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snapshot) => {
       setJobs(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false); // <-- وقف التحميل لما البيانات توصل
     });
     return () => unsub();
   }, []);
@@ -105,6 +108,16 @@ export default function App() {
       alert(err.message);
     }
   };
+
+  // شاشة تحميل تظهر في البداية فقط
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8f9fa] text-blue-600 gap-4">
+        <Loader2 size={60} className="animate-spin" />
+        <p className="font-bold text-lg animate-pulse">Loading Jobs...</p>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen bg-[#f8f9fa] text-gray-900 ${lang === "ar" ? "font-sans text-right" : "text-left font-sans"}`}>
