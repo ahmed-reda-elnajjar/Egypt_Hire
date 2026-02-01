@@ -1,27 +1,27 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react"; // حذفت useRef غير المستخدم
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Languages, MapPin, Search, Briefcase, Zap, ArrowLeft, Send, Loader2, LayoutDashboard,
+  Languages, MapPin, Search, Briefcase, Zap, ArrowLeft, Send, Loader2,
   Globe, Instagram, Linkedin, Phone, Mail, DollarSign, Clock, Plus, Eye, EyeOff, Lock, 
   CheckCircle, Trash2, Edit3, User, Upload, LayoutGrid, Mic, StopCircle, GraduationCap, 
-  Users, Copy, RotateCcw, ExternalLink, FileText, Download, LogIn, LogOut, X, Save
-} from "lucide-react";
+  Users, RotateCcw, ExternalLink, FileText, Download, LogIn, LogOut, X, Save 
+} from "lucide-react"; // حذفت LayoutDashboard و Copy لأنهم كانوا بيعملوا مشاكل
 
-// --- استيراد ملف الترجمة (تأكد من وجود الملف) ---
+// تأكد أن ملف الترجمة موجود في نفس المجلد
 import { translations } from "./translations";
 
-// --- إعدادات فايربيس ---
+// إعدادات فايربيس
 import { db, auth } from "./firebase"; 
 import { 
   collection, onSnapshot, addDoc, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy 
 } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
 
-// --- إعدادات Cloudinary ---
+// إعدادات Cloudinary
 const CLOUD_NAME = "dvefx5ts8"; 
 const UPLOAD_PRESET = "w1cmaa5s"; 
 
-// --- Feature Card Component ---
+// --- (تصحيح الخطأ) تعريف مكون الكارت هنا ---
 function FeatureCard({ icon, title, desc }) {
   return (
     <motion.div whileHover={{ y: -10 }} className="bg-white p-10 rounded-[3rem] shadow-sm border border-gray-50 flex flex-col items-center text-center">
@@ -39,19 +39,17 @@ const cardVariants = {
 };
 
 export default function App() {
-  // 1. اللغة الافتراضية English
   const [lang, setLang] = useState("en"); 
   const [view, setView] = useState("home"); 
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [filters, setFilters] = useState({ language: "all", location: "all" });
   
-  // User Session & Profile Modal State
   const [currentUser, setCurrentUser] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // 2. تعريف متغير الترجمة
-  const t = translations[lang];
+  // حماية الكود لو الترجمة مش موجودة
+  const t = translations[lang] || translations['en'];
 
   useEffect(() => {
     const savedUser = localStorage.getItem("egyptHireUser");
@@ -59,7 +57,6 @@ export default function App() {
       setCurrentUser(JSON.parse(savedUser));
     }
     signInAnonymously(auth).catch(console.error);
-    // تحديث الاتجاه (RTL/LTR)
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   }, [lang]);
 
@@ -103,7 +100,7 @@ export default function App() {
       const newUser = { ...currentUser, ...updatedData };
       setCurrentUser(newUser);
       localStorage.setItem("egyptHireUser", JSON.stringify(newUser));
-      alert("Updated successfully");
+      alert(lang === "ar" ? "تم التحديث" : "Updated successfully");
     } catch (err) {
       alert(err.message);
     }
@@ -209,7 +206,7 @@ export default function App() {
   );
 }
 
-// --- Components (Updated with 't' nested props) ---
+// --- Components ---
 
 function UserProfileModal({ user, onClose, onLogout, onUpdate, t, lang }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -398,6 +395,24 @@ function LoginView({ onLogin, t, lang }) {
              <ApplySelect label={t.profile.experience} icon={<Briefcase size={18}/>} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})}/>
            </div>
 
+           <div className="space-y-2">
+             <label className="block text-xs font-black text-gray-400 uppercase mx-2 tracking-wide">{t.apply.cvLink || "CV Link"}</label>
+             <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="https://drive.google.com/..." 
+                  className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none border border-transparent focus:bg-white focus:border-blue-200 transition-all text-sm"
+                  onChange={e => setFormData({...formData, cvUrl: e.target.value})}
+                />
+                <div className="relative">
+                   <input type="file" id="cv-quick" className="hidden" accept=".pdf,.doc" onChange={e => setCvFile(e.target.files[0])} />
+                   <label htmlFor="cv-quick" className={`h-full px-4 rounded-2xl flex items-center justify-center cursor-pointer transition-all ${cvFile ? 'bg-green-100 text-green-600' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                      {cvFile ? <CheckCircle size={20}/> : <Upload size={20}/>}
+                   </label>
+                </div>
+             </div>
+           </div>
+
            <button disabled={loading} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-xl shadow-xl flex items-center justify-center gap-2 mt-4 hover:bg-blue-700 transition-all">
              {loading ? <Loader2 className="animate-spin"/> : <><Send size={20} className={lang === 'ar' ? "rotate-180" : ""}/> Submit</>}
            </button>
@@ -503,13 +518,13 @@ function JobDetailsView({ job, onBack, onApply, t }) {
   return (
     <div className="max-w-5xl mx-auto py-10 animate-in fade-in zoom-in duration-300">
       <button onClick={onBack} className="mb-6 flex items-center gap-2 text-gray-400 font-bold hover:text-blue-600 transition-colors">
-        <ArrowLeft size={20} className={document.documentElement.dir === 'rtl' ? "rotate-180" : ""}/> Back
+        <ArrowLeft size={20} className={document.documentElement.dir === 'rtl' ? "rotate-180" : ""}/> {t.backSearch}
       </button>
 
       <div className="bg-white rounded-[3.5rem] overflow-hidden shadow-2xl border border-gray-50">
         <div className="bg-blue-600 p-12 text-white relative">
           <span className="bg-white/20 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest absolute top-10 left-10">
-            {job.language}
+            {job.language} {t.specialization}
           </span>
           <h1 className="text-4xl md:text-6xl font-black mt-10 leading-tight">{job.title}</h1>
           <p className="text-xl font-bold opacity-90 mt-2 flex items-center gap-2">
@@ -522,10 +537,10 @@ function JobDetailsView({ job, onBack, onApply, t }) {
             <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-gray-200 border border-gray-50 text-center relative">
               <p className="text-gray-400 text-xs font-bold mb-8">{t.jobs.details}</p>
               <div className="space-y-8">
-                <DetailStat icon={<MapPin className="text-blue-600"/>} title="Location" value={job.location} />
-                <DetailStat icon={<DollarSign className="text-green-600"/>} title="Salary" value={job.salary} />
-                <DetailStat icon={<Briefcase className="text-purple-600"/>} title="Experience" value={job.experience} />
-                <DetailStat icon={<Clock className="text-orange-600"/>} title="Shift" value={job.shift} />
+                <DetailStat icon={<MapPin className="text-blue-600"/>} title={t.location} value={job.location} />
+                <DetailStat icon={<DollarSign className="text-green-600"/>} title={t.salary} value={job.salary} />
+                <DetailStat icon={<Briefcase className="text-purple-600"/>} title={t.expReq} value={job.experience} />
+                <DetailStat icon={<Clock className="text-orange-600"/>} title={t.shift} value={job.shift} />
               </div>
               <motion.button 
                 whileHover={{ scale: 1.02 }}
@@ -542,7 +557,7 @@ function JobDetailsView({ job, onBack, onApply, t }) {
             <section>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-1.5 h-8 bg-blue-600 rounded-full"></div>
-                <h3 className="text-3xl font-black text-slate-800">Job Description</h3>
+                <h3 className="text-3xl font-black text-slate-800">{t.jobDesc}</h3>
               </div>
               <p className="text-gray-500 text-xl leading-relaxed whitespace-pre-line font-medium">{job.description}</p>
             </section>
@@ -550,10 +565,20 @@ function JobDetailsView({ job, onBack, onApply, t }) {
             <section>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-1.5 h-8 bg-orange-500 rounded-full"></div>
-                <h3 className="text-3xl font-black text-slate-800">Requirements</h3>
+                <h3 className="text-3xl font-black text-slate-800">{t.requirements}</h3>
               </div>
               <p className="text-gray-500 text-xl leading-relaxed whitespace-pre-line font-medium">{job.requirements}</p>
             </section>
+
+            {job.benefits && (
+              <section>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-1.5 h-8 bg-green-500 rounded-full"></div>
+                  <h3 className="text-3xl font-black text-slate-800">{t.benefits}</h3>
+                </div>
+                <p className="text-gray-500 text-xl leading-relaxed whitespace-pre-line font-medium">{job.benefits}</p>
+              </section>
+            )}
           </div>
         </div>
       </div>
@@ -600,7 +625,7 @@ function AdminPanelView({ jobs, onViewJob, t }) {
         await addDoc(collection(db, "jobs"), { ...form, createdAt: serverTimestamp() });
       }
       setForm({ title: "", company: "", location: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "" });
-      alert("Success");
+      alert(t.successMsg);
     } catch (e) { alert(e.message); }
     setLoading(false);
   };
@@ -614,7 +639,7 @@ function AdminPanelView({ jobs, onViewJob, t }) {
            <input type={showPass ? "text" : "password"} onChange={(e)=>setPass(e.target.value)} className="w-full bg-blue-50/30 p-5 rounded-2xl text-center font-bold outline-none border border-blue-50 focus:border-blue-500 transition-all" placeholder="******"/>
            <button onClick={()=>setShowPass(!showPass)} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">{showPass ? <EyeOff size={22}/> : <Eye size={22}/>}</button>
         </div>
-        <button onClick={() => pass === "negrootech" ? setIsAuth(true) : alert("Wrong Password")} className="w-full bg-[#0f172a] text-white py-5 rounded-2xl font-bold shadow-xl">Login</button>
+        <button onClick={() => pass === "negrootech" ? setIsAuth(true) : alert("Wrong Password")} className="w-full bg-[#0f172a] text-white py-5 rounded-2xl font-bold shadow-xl">{t.nav.login}</button>
       </div>
     </div>
   );
@@ -651,10 +676,10 @@ function AdminPanelView({ jobs, onViewJob, t }) {
                 <AdminField label="Experience" value={form.experience} placeholder="Entry Level" onChange={v => setForm({...form, experience: v})}/>
                 <AdminField label="Shift" value={form.shift} placeholder="Fixed" onChange={v => setForm({...form, shift: v})}/>
               </div>
-              <textarea value={form.description} placeholder="Description" className="w-full bg-gray-50 p-5 rounded-2xl h-32 outline-none font-bold shadow-sm border border-gray-100" onChange={e => setForm({...form, description: e.target.value})}/>
-              <textarea value={form.requirements} placeholder="Requirements" className="w-full bg-gray-50 p-5 rounded-2xl h-32 outline-none font-bold shadow-sm border border-gray-100" onChange={e => setForm({...form, requirements: e.target.value})}/>
+              <textarea value={form.description} placeholder={t.jobDesc} className="w-full bg-gray-50 p-5 rounded-2xl h-32 outline-none font-bold shadow-sm border border-gray-100" onChange={e => setForm({...form, description: e.target.value})}/>
+              <textarea value={form.requirements} placeholder={t.requirements} className="w-full bg-gray-50 p-5 rounded-2xl h-32 outline-none font-bold shadow-sm border border-gray-100" onChange={e => setForm({...form, requirements: e.target.value})}/>
               <button disabled={loading} onClick={saveJob} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold text-xl flex justify-center items-center gap-3 shadow-xl">
-                {loading ? <Loader2 className="animate-spin"/> : <Plus size={24}/>} {editingId ? t.admin.save : t.admin.publish}
+                {loading ? <Loader2 className="animate-spin"/> : <Plus size={24}/>} {editingId ? t.admin.save : t.admin.postJob}
               </button>
             </div>
           </div>
@@ -664,7 +689,7 @@ function AdminPanelView({ jobs, onViewJob, t }) {
               <div key={j.id} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-50 flex justify-between items-center">
                 <div className="flex gap-2">
                   <button onClick={() => {setEditingId(j.id); setForm(j); window.scrollTo({top:0, behavior:"smooth"});}} className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all"><Edit3 size={20}/></button>
-                  <button onClick={async () => window.confirm("Sure?") && await deleteDoc(doc(db, "jobs", j.id))} className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={20}/></button>
+                  <button onClick={async () => window.confirm(t.confirmDelete) && await deleteDoc(doc(db, "jobs", j.id))} className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={20}/></button>
                 </div>
                 <div>
                   <h4 className="font-bold text-lg text-slate-800">{j.title}</h4>
@@ -679,7 +704,7 @@ function AdminPanelView({ jobs, onViewJob, t }) {
       {activeTab === "applications" && (
         <div className={`max-w-6xl mx-auto animate-in fade-in px-4 ${document.documentElement.dir === 'rtl' ? 'text-right' : 'text-left'}`}>
           {applications.length === 0 ? (
-            <div className="text-center text-gray-400 font-bold py-20">No Applications</div>
+            <div className="text-center text-gray-400 font-bold py-20">{t.noData}</div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
                {applications.map(app => (
@@ -709,9 +734,9 @@ function AdminPanelView({ jobs, onViewJob, t }) {
                        <div className="flex-1 space-y-2 mx-4">
                           <p className="text-gray-400 font-bold flex items-center gap-2"><Phone size={16}/> {app.phone}</p>
                           <div className="flex gap-4 mt-2 text-sm text-gray-500 flex-wrap">
-                             <span>Exp: {app.experience}</span>
+                             <span>{t.expReq}: {app.experience}</span>
                              <span>•</span>
-                             <span>Gender: {app.gender}</span>
+                             <span>{t.gender}: {app.gender}</span>
                           </div>
                        </div>
                        
@@ -726,12 +751,12 @@ function AdminPanelView({ jobs, onViewJob, t }) {
                             </div>
                             {app.cvUrl && (
                                 <a href={app.cvUrl} target="_blank" rel="noreferrer" className="bg-blue-600 text-white p-3 rounded-2xl flex items-center justify-center gap-2 font-bold hover:bg-blue-700 transition-colors">
-                                    <Download size={18}/> View CV
+                                    <Download size={18}/> {t.viewCV}
                                 </a>
                             )}
                        </div>
                        
-                       <button onClick={async () => window.confirm("Sure?") && await deleteDoc(doc(db, "applications", app.id))} className="text-red-300 hover:text-red-500 transition-colors">
+                       <button onClick={async () => window.confirm(t.confirmDelete) && await deleteDoc(doc(db, "applications", app.id))} className="text-red-300 hover:text-red-500 transition-colors">
                           <Trash2 size={24} />
                        </button>
                     </div>
@@ -746,7 +771,7 @@ function AdminPanelView({ jobs, onViewJob, t }) {
       {activeTab === "users" && (
         <div className={`max-w-6xl mx-auto animate-in fade-in px-4 ${document.documentElement.dir === 'rtl' ? 'text-right' : 'text-left'}`}>
           {users.length === 0 ? (
-            <div className="text-center text-gray-400 font-bold py-20">No Users</div>
+            <div className="text-center text-gray-400 font-bold py-20">{t.noData}</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                {users.map(user => (
@@ -767,10 +792,10 @@ function AdminPanelView({ jobs, onViewJob, t }) {
                     </div>
                     {user.cvUrl && (
                         <a href={user.cvUrl} target="_blank" rel="noreferrer" className="bg-purple-50 text-purple-600 p-3 rounded-2xl flex items-center justify-center gap-2 font-bold hover:bg-purple-100 transition-colors mt-2">
-                           <FileText size={18}/> View CV
+                           <FileText size={18}/> {t.viewCV}
                         </a>
                     )}
-                    <button onClick={async () => window.confirm("Delete User?") && await deleteDoc(doc(db, "users", user.id))} className="text-red-300 text-xs self-end mt-2 hover:text-red-500">Delete</button>
+                    <button onClick={async () => window.confirm(t.confirmDelete) && await deleteDoc(doc(db, "users", user.id))} className="text-red-300 text-xs self-end mt-2 hover:text-red-500">{t.delete}</button>
                  </div>
                ))}
             </div>
@@ -787,9 +812,9 @@ function ApplicationPage({ job, onBack, user, t, lang }) {
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0); 
-  const mediaRecorder = useRef(null);
-  const audioChunks = useRef([]);
-  const timerRef = useRef(null); 
+  const mediaRecorder = React.useRef(null);
+  const audioChunks = React.useRef([]);
+  const timerRef = React.useRef(null); 
   const [cvFile, setCvFile] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -894,32 +919,32 @@ function ApplicationPage({ job, onBack, user, t, lang }) {
   if (success) return (
     <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="py-20 text-center bg-white rounded-[3rem] shadow-xl p-12 max-w-lg mx-auto border border-gray-50 mx-4">
       <CheckCircle size={60} className="text-green-500 mx-auto mb-6"/>
-      <h2 className="text-3xl font-black mb-4 text-slate-800">Success!</h2>
-      <p className="text-gray-400 font-bold mb-8 italic">HR will call you soon.</p>
-      <button onClick={() => window.location.reload()} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-100">Home</button>
+      <h2 className="text-3xl font-black mb-4 text-slate-800">{t.successMsg}</h2>
+      <p className="text-gray-400 font-bold mb-8 italic">{t.hrContact}</p>
+      <button onClick={() => window.location.reload()} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-100">{t.backHome}</button>
     </motion.div>
   );
 
   return (
     <div className="max-w-3xl mx-auto py-10 animate-in slide-in-from-bottom-6 px-4">
       <button onClick={onBack} className="mb-6 font-bold text-gray-400 flex items-center gap-2 hover:text-blue-600 transition-all">
-        <ArrowLeft size={18} className={document.documentElement.dir === 'rtl' ? "rotate-180" : ""}/> {t.apply.title}
+        <ArrowLeft size={18} className={document.documentElement.dir === 'rtl' ? "rotate-180" : ""}/> {t.backSearch}
       </button>
       <div className={`bg-white rounded-[3rem] shadow-2xl p-8 md:p-12 border border-gray-100 ${document.documentElement.dir === 'rtl' ? 'text-right' : 'text-left'}`}>
-        <h2 className="text-3xl font-black mb-12 text-center text-slate-900">{t.apply.title}</h2>
+        <h2 className="text-3xl font-black mb-12 text-center text-slate-900">{t.applyJob}</h2>
         
         <form onSubmit={handleApply} className="space-y-8">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <ApplyField label="Full Name" icon={<User size={20}/>} placeholder="Ahmed Mohamed" value={formData.name} onChange={v => setFormData({...formData, name: v})}/>
-              <ApplyField label="Phone" icon={<Phone size={20}/>} placeholder="01xxxxxxxxx" value={formData.phone} onChange={v => setFormData({...formData, phone: v})}/>
+              <ApplyField label={t.fullName} icon={<User size={20}/>} placeholder="Ahmed Mohamed" value={formData.name} onChange={v => setFormData({...formData, name: v})}/>
+              <ApplyField label={t.phone} icon={<Phone size={20}/>} placeholder="01xxxxxxxxx" value={formData.phone} onChange={v => setFormData({...formData, phone: v})}/>
            </div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <ApplySelect label="Status" icon={<GraduationCap size={20}/>} options={["Student", "Grad", "Dropout"]} onChange={v => setFormData({...formData, status: v})}/>
-              <ApplySelect label="Gender" icon={<Users size={20}/>} options={["Male", "Female"]} onChange={v => setFormData({...formData, gender: v})}/>
+              <ApplySelect label={t.status} icon={<GraduationCap size={20}/>} options={[t.student, t.grad, t.dropout]} onChange={v => setFormData({...formData, status: v})}/>
+              <ApplySelect label={t.gender} icon={<Users size={20}/>} options={[t.male, t.female]} onChange={v => setFormData({...formData, gender: v})}/>
            </div>
 
-           <ApplySelect label="Experience" icon={<Briefcase size={20}/>} value={formData.experience} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})}/>
+           <ApplySelect label={t.experience} icon={<Briefcase size={20}/>} value={formData.experience} options={[t.noExp, t.lessYear, t.oneYear, t.twoYears, t.threeYears, t.fourYears, t.fivePlus]} onChange={v => setFormData({...formData, experience: v})}/>
 
            <div className="relative group">
                <input 
@@ -939,7 +964,7 @@ function ApplicationPage({ job, onBack, user, t, lang }) {
                       <>
                         <Upload className="text-gray-400 mb-3 group-hover:text-blue-500" size={36}/>
                         <p className="font-bold text-gray-500 group-hover:text-blue-600">
-                           {user?.cvUrl ? "CV Uploaded" : "Upload CV"}
+                           {user?.cvUrl ? t.cvLink : t.uploadCV}
                         </p>
                       </>
                   )}
@@ -947,7 +972,7 @@ function ApplicationPage({ job, onBack, user, t, lang }) {
            </div>
 
            <div className="bg-blue-50/30 p-8 rounded-[2rem] border border-blue-100 text-center space-y-6">
-            <label className="text-lg font-black text-blue-900 block">Record Audio (2 min)</label>
+            <label className="text-lg font-black text-blue-900 block">{t.recordAudio}</label>
             <div className="flex flex-col items-center gap-6">
               {!audioUrl ? (
                 <>
@@ -960,7 +985,7 @@ function ApplicationPage({ job, onBack, user, t, lang }) {
                 <div className="w-full space-y-4 animate-in fade-in duration-500">
                   <audio src={audioUrl} controls className="w-full rounded-full shadow-sm" />
                   <button type="button" onClick={()=>{setAudioUrl(null); setRecordingTime(0);}} className="text-red-500 text-sm font-bold underline flex items-center gap-1 mx-auto hover:text-red-700">
-                    <Trash2 size={16}/> Reset
+                    <Trash2 size={16}/> {t.reset}
                   </button>
                 </div>
               )}
@@ -973,7 +998,7 @@ function ApplicationPage({ job, onBack, user, t, lang }) {
              disabled={loading} 
              className="w-full bg-blue-600 text-white py-5 rounded-[2rem] font-bold text-2xl flex justify-center items-center gap-3 shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all disabled:bg-gray-400 disabled:shadow-none"
            >
-             {loading ? <Loader2 className="animate-spin"/> : <><Send size={28} className={document.documentElement.dir === 'rtl' ? "rotate-180 -mt-1" : "-mt-1"}/> {t.apply.send}</>}
+             {loading ? <Loader2 className="animate-spin"/> : <><Send size={28} className={document.documentElement.dir === 'rtl' ? "rotate-180 -mt-1" : "-mt-1"}/> {t.submit}</>}
            </motion.button>
         </form>
       </div>
@@ -1031,12 +1056,12 @@ function Footer({ setView, t }) {
         <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <motion.div whileHover={{ scale: 1.02 }} className="bg-gray-50/50 p-10 rounded-[2.5rem] border border-gray-100 flex flex-col items-center shadow-sm">
              <Mail className="text-blue-600 mb-2" size={26}/>
-             <span className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-black">Email</span>
+             <span className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-black">{t.email}</span>
              <p className="text-slate-800 break-all text-center">a7mdelnagar297@gmail.com</p>
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} className="bg-gray-50/50 p-10 rounded-[2.5rem] border border-gray-100 flex flex-col items-center shadow-sm">
              <Phone className="text-blue-600 mb-2" size={26}/>
-             <span className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-black">Phone</span>
+             <span className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-black">{t.phone}</span>
              <p className="text-slate-800" dir="ltr">01099119352</p>
           </motion.div>
         </div>
@@ -1049,9 +1074,9 @@ function Footer({ setView, t }) {
               ))}
            </div>
            <div className="flex gap-6 text-[10px] text-gray-300 uppercase tracking-widest pt-4">
-              <button onClick={() => setView("home")} className="hover:text-blue-600 transition-colors">{t.nav.home}</button>
-              <button onClick={() => setView("jobs")} className="hover:text-blue-600 transition-colors">{t.nav.jobs}</button>
-              <button onClick={() => setView("admin")} className="hover:text-blue-600 transition-colors">{t.nav.admin}</button>
+              <button onClick={() => setView("home")} className="hover:text-blue-600 transition-colors">{t.navHome}</button>
+              <button onClick={() => setView("jobs")} className="hover:text-blue-600 transition-colors">{t.navJobs}</button>
+              <button onClick={() => setView("admin")} className="hover:text-blue-600 transition-colors">{t.navAdmin}</button>
            </div>
         </div>
       </div>
