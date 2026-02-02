@@ -45,30 +45,48 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
+  // --- Dynamic Options State ---
+  // دي اللي هتشيل اللغات والأماكن اللي هنجيبها من الوظائف
+  const [uniqueLocations, setUniqueLocations] = useState([]);
+  const [uniqueLanguages, setUniqueLanguages] = useState([]);
+
   useEffect(() => {
     const savedUser = localStorage.getItem("egyptHireUser");
     if (savedUser) {
       setCurrentUser(JSON.parse(savedUser));
     }
     signInAnonymously(auth).catch(console.error);
-    // Force LTR direction for English only
     document.documentElement.dir = "ltr";
   }, []);
 
   useEffect(() => {
     const q = query(collection(db, "jobs"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snapshot) => {
-      setJobs(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      const fetchedJobs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setJobs(fetchedJobs);
       setLoading(false);
+
+      // --- Smart Extraction Logic ---
+      // هنا بنعمل مسح لكل الوظائف ونطلع الأماكن واللغات الجديدة أوتوماتيك
+      const locs = [...new Set(fetchedJobs.map(j => j.location?.trim()).filter(Boolean))];
+      const langs = [...new Set(fetchedJobs.map(j => j.language?.trim()).filter(Boolean))];
+      setUniqueLocations(locs);
+      setUniqueLanguages(langs);
     });
     return () => unsub();
   }, []);
 
   const filteredJobs = jobs.filter(job => {
     if (view === "recommended" && currentUser) {
-      return job.language?.toLowerCase().includes(currentUser.language?.toLowerCase()) || 
-             currentUser.language === "all";
+      // Improved matching logic: Check if job language includes user language (case-insensitive)
+      const userLang = currentUser.language?.toLowerCase().trim();
+      const jobLang = job.language?.toLowerCase().trim();
+      
+      // If user selected "All" or match found
+      return currentUser.language === "all" || (jobLang && jobLang.includes(userLang));
     }
+    
+    // Normal Filtering
     const langMatch = filters.language === "all" || job.language?.toLowerCase().includes(filters.language.toLowerCase());
     const locMatch = filters.location === "all" || job.location?.toLowerCase().includes(filters.location.toLowerCase());
     return langMatch && locMatch;
@@ -134,8 +152,6 @@ export default function App() {
           </div>
           <div className="flex gap-2 md:gap-4 items-center">
             
-            {/* Language Toggle Removed Here */}
-
             {!currentUser ? (
               <motion.button 
                 whileHover={{ scale: 1.1, color: "#2563eb" }}
@@ -177,6 +193,7 @@ export default function App() {
               onClose={() => setShowProfileModal(false)} 
               onLogout={handleLogout}
               onUpdate={handleUpdateProfile}
+              // Pass unique options to modal too if needed later
            />
         )}
 
@@ -189,11 +206,29 @@ export default function App() {
           className="max-w-7xl mx-auto px-4 py-8 min-h-[70vh]"
         >
           {view === "home" && <HomeView setView={setView} onFastApply={handleFastApply} />}
-          {view === "jobs" && <JobsListView jobs={filteredJobs} filters={filters} setFilters={setFilters} onViewDetails={(j) => { setSelectedJob(j); setView("details"); }} />}
+          
+          {/* هنا نمرر اللغات والأماكن المستخرجة ديناميكياً */}
+          {view === "jobs" && (
+             <JobsListView 
+                jobs={filteredJobs} 
+                filters={filters} 
+                setFilters={setFilters} 
+                onViewDetails={(j) => { setSelectedJob(j); setView("details"); }}
+                locations={uniqueLocations} // <-- Dynamic
+                languages={uniqueLanguages} // <-- Dynamic
+             />
+          )}
+
           {view === "recommended" && <RecommendedJobsView jobs={filteredJobs} user={currentUser} onViewDetails={(j) => { setSelectedJob(j); setView("details"); }} />}
           {view === "details" && <JobDetailsView job={selectedJob} onBack={() => setView("jobs")} onApply={() => setView("apply")} />}
           {view === "apply" && <ApplicationPage job={selectedJob} onBack={() => setView("details")} user={currentUser} />}
-          {view === "login" && <LoginView onLogin={(user) => { setCurrentUser(user); setView("recommended"); }} />}
+          {view === "login" && (
+              <LoginView 
+                onLogin={(user) => { setCurrentUser(user); setView("recommended"); }} 
+                // We pass these so the user can register with a language that actually exists
+                availableLanguages={uniqueLanguages} 
+              />
+          )}
           
           {view === "admin" && <AdminPanelView jobs={jobs} onViewJob={(jobId) => {
              const job = jobs.find(j => j.id === jobId);
@@ -252,6 +287,7 @@ function UserProfileModal({ user, onClose, onLogout, onUpdate }) {
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
                       <label className="text-xs font-bold text-gray-400">Language</label>
+                      {/* Standard languages for profile editing */}
                       <select value={editForm.language} onChange={(e) => setEditForm({...editForm, language: e.target.value})} className="w-full bg-gray-50 p-3 rounded-xl font-bold border-none outline-none">
                          {["English", "German", "French", "Italian", "Spanish"].map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
@@ -446,29 +482,38 @@ function RecommendedJobsView({ jobs, user, onViewDetails }) {
   );
 }
 
-function JobsListView({ jobs, filters, setFilters, onViewDetails, hideFilters = false }) {
+// --- Modified to be Dynamic ---
+function JobsListView({ jobs, filters, setFilters, onViewDetails, hideFilters = false, locations = [], languages = [] }) {
   return (
     <div className="space-y-10">
       {!hideFilters && (
         <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center justify-between">
            <div className="flex gap-4 items-center flex-1">
+              
+              {/* Dynamic Language Filter */}
               <select 
                 value={filters.language}
                 onChange={(e) => setFilters(p => ({...p, language: e.target.value}))} 
                 className="bg-gray-50 p-4 rounded-2xl border-none font-bold text-gray-500 outline-none cursor-pointer hover:bg-gray-100 w-full md:w-auto"
               >
                 <option value="all">All Languages</option>
-                <option value="English">English</option>
-                <option value="German">German</option>
+                {/* هنا بنعمل لوب على اللغات الموجودة في الداتا */}
+                {languages.map(lang => (
+                   <option key={lang} value={lang}>{lang}</option>
+                ))}
               </select>
+
+              {/* Dynamic Location Filter */}
               <select 
                 value={filters.location}
                 onChange={(e) => setFilters(p => ({...p, location: e.target.value}))} 
                 className="bg-gray-50 p-4 rounded-2xl border-none font-bold text-gray-500 outline-none cursor-pointer hover:bg-gray-100 w-full md:w-auto"
               >
                 <option value="all">All Locations</option>
-                <option value="Maadi">Maadi</option>
-                <option value="Nasr City">Nasr City</option>
+                {/* هنا بنعمل لوب على الأماكن الموجودة في الداتا */}
+                {locations.map(loc => (
+                   <option key={loc} value={loc}>{loc}</option>
+                ))}
               </select>
 
               <button 
