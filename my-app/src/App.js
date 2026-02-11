@@ -7,6 +7,9 @@ import {
   Users, RotateCcw, ExternalLink, FileText, Download, LogIn, LogOut, X, Save 
 } from "lucide-react";
 
+// استدعاء ملف الامتحان
+import EnglishTest from "./EnglishTest";
+
 // Firebase Config
 import { db, auth } from "./firebase"; 
 import { 
@@ -46,7 +49,6 @@ export default function App() {
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   // --- Dynamic Options State ---
-  // دي اللي هتشيل اللغات والأماكن اللي هنجيبها من الوظائف
   const [uniqueLocations, setUniqueLocations] = useState([]);
   const [uniqueLanguages, setUniqueLanguages] = useState([]);
 
@@ -66,8 +68,7 @@ export default function App() {
       setJobs(fetchedJobs);
       setLoading(false);
 
-      // --- Smart Extraction Logic ---
-      // هنا بنعمل مسح لكل الوظائف ونطلع الأماكن واللغات الجديدة أوتوماتيك
+      // Smart Extraction Logic
       const locs = [...new Set(fetchedJobs.map(j => j.location?.trim()).filter(Boolean))];
       const langs = [...new Set(fetchedJobs.map(j => j.language?.trim()).filter(Boolean))];
       setUniqueLocations(locs);
@@ -78,15 +79,10 @@ export default function App() {
 
   const filteredJobs = jobs.filter(job => {
     if (view === "recommended" && currentUser) {
-      // Improved matching logic: Check if job language includes user language (case-insensitive)
       const userLang = currentUser.language?.toLowerCase().trim();
       const jobLang = job.language?.toLowerCase().trim();
-      
-      // If user selected "All" or match found
       return currentUser.language === "all" || (jobLang && jobLang.includes(userLang));
     }
-    
-    // Normal Filtering
     const langMatch = filters.language === "all" || job.language?.toLowerCase().includes(filters.language.toLowerCase());
     const locMatch = filters.location === "all" || job.location?.toLowerCase().includes(filters.location.toLowerCase());
     return langMatch && locMatch;
@@ -144,7 +140,7 @@ export default function App() {
             </div>
             <div className="hidden md:flex gap-6 text-sm font-bold text-gray-500">
               <button onClick={() => setView("home")} className={view === "home" ? "text-blue-600 border-b-2 border-blue-600 pb-1" : "hover:text-blue-600"}>Home</button>
-              <button onClick={() => setView("jobs")} className={view === "jobs" ? "text-blue-600 border-b-2 border-blue-600 pb-1" : "hover:text-blue-600"}>Browse Jobs</button>
+              <button onClick={() => setView("jobs")} className={view === "jobs" ? "text-blue-600 border-b-2 border-blue-600 pb-1" : "hover:text-blue-600"}>Find Jobs</button>
               {currentUser && (
                 <button onClick={() => setView("recommended")} className={view === "recommended" ? "text-blue-600 border-b-2 border-blue-600 pb-1" : "hover:text-blue-600"}>Recommended</button>
               )}
@@ -193,7 +189,6 @@ export default function App() {
               onClose={() => setShowProfileModal(false)} 
               onLogout={handleLogout}
               onUpdate={handleUpdateProfile}
-              // Pass unique options to modal too if needed later
            />
         )}
 
@@ -207,15 +202,25 @@ export default function App() {
         >
           {view === "home" && <HomeView setView={setView} onFastApply={handleFastApply} />}
           
-          {/* هنا نمرر اللغات والأماكن المستخرجة ديناميكياً */}
           {view === "jobs" && (
              <JobsListView 
                 jobs={filteredJobs} 
                 filters={filters} 
                 setFilters={setFilters} 
                 onViewDetails={(j) => { setSelectedJob(j); setView("details"); }}
-                locations={uniqueLocations} // <-- Dynamic
-                languages={uniqueLanguages} // <-- Dynamic
+                locations={uniqueLocations} 
+                languages={uniqueLanguages} 
+             />
+          )}
+
+          {/* --- عرض صفحة الامتحان --- */}
+          {view === "test" && (
+             <EnglishTest 
+               onBack={() => setView("home")} 
+               onFinish={(level) => { 
+                  alert("Your Level is: " + level); 
+                  setView("jobs"); 
+               }} 
              />
           )}
 
@@ -225,7 +230,6 @@ export default function App() {
           {view === "login" && (
               <LoginView 
                 onLogin={(user) => { setCurrentUser(user); setView("recommended"); }} 
-                // We pass these so the user can register with a language that actually exists
                 availableLanguages={uniqueLanguages} 
               />
           )}
@@ -287,7 +291,6 @@ function UserProfileModal({ user, onClose, onLogout, onUpdate }) {
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
                       <label className="text-xs font-bold text-gray-400">Language</label>
-                      {/* Standard languages for profile editing */}
                       <select value={editForm.language} onChange={(e) => setEditForm({...editForm, language: e.target.value})} className="w-full bg-gray-50 p-3 rounded-xl font-bold border-none outline-none">
                          {["English", "German", "French", "Italian", "Spanish"].map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
@@ -360,7 +363,7 @@ function HomeView({ setView, onFastApply }) {
           onClick={() => setView("jobs")} 
           className="bg-blue-600 text-white px-10 py-5 rounded-[2rem] font-bold text-xl shadow-xl flex items-center gap-3"
         >
-          Browse Jobs <Search size={22}/>
+          Find Jobs <Search size={22}/>
         </motion.button>
         
         <motion.button 
@@ -370,6 +373,16 @@ function HomeView({ setView, onFastApply }) {
           className="bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-bold text-xl border border-gray-100 shadow-sm flex items-center gap-3"
         >
           Fast Apply <Zap size={22} className="text-orange-400 fill-orange-400"/>
+        </motion.button>
+
+        {/* --- زر الامتحان الجديد (بجانب Fast Apply) --- */}
+        <motion.button 
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setView("test")} 
+          className="bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-bold text-xl border border-gray-100 shadow-sm flex items-center gap-3"
+        >
+          Test English <CheckCircle size={22} className="text-green-500"/>
         </motion.button>
       </div>
       
@@ -482,7 +495,6 @@ function RecommendedJobsView({ jobs, user, onViewDetails }) {
   );
 }
 
-// --- Modified to be Dynamic ---
 function JobsListView({ jobs, filters, setFilters, onViewDetails, hideFilters = false, locations = [], languages = [] }) {
   return (
     <div className="space-y-10">
@@ -490,27 +502,23 @@ function JobsListView({ jobs, filters, setFilters, onViewDetails, hideFilters = 
         <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center justify-between">
            <div className="flex gap-4 items-center flex-1">
               
-              {/* Dynamic Language Filter */}
               <select 
                 value={filters.language}
                 onChange={(e) => setFilters(p => ({...p, language: e.target.value}))} 
                 className="bg-gray-50 p-4 rounded-2xl border-none font-bold text-gray-500 outline-none cursor-pointer hover:bg-gray-100 w-full md:w-auto"
               >
                 <option value="all">All Languages</option>
-                {/* هنا بنعمل لوب على اللغات الموجودة في الداتا */}
                 {languages.map(lang => (
                    <option key={lang} value={lang}>{lang}</option>
                 ))}
               </select>
 
-              {/* Dynamic Location Filter */}
               <select 
                 value={filters.location}
                 onChange={(e) => setFilters(p => ({...p, location: e.target.value}))} 
                 className="bg-gray-50 p-4 rounded-2xl border-none font-bold text-gray-500 outline-none cursor-pointer hover:bg-gray-100 w-full md:w-auto"
               >
                 <option value="all">All Locations</option>
-                {/* هنا بنعمل لوب على الأماكن الموجودة في الداتا */}
                 {locations.map(loc => (
                    <option key={loc} value={loc}>{loc}</option>
                 ))}
@@ -662,6 +670,15 @@ function AdminPanelView({ jobs, onViewJob }) {
     }
   }, [isAuth, activeTab]);
 
+  const handleRateEnglish = async (appId, level) => {
+    try {
+      const appRef = doc(db, "applications", appId);
+      await updateDoc(appRef, { englishLevel: level });
+    } catch (err) {
+      alert("Error updating level: " + err.message);
+    }
+  };
+
   const saveJob = async () => {
     setLoading(true);
     try {
@@ -756,10 +773,24 @@ function AdminPanelView({ jobs, onViewJob }) {
             <div className="grid grid-cols-1 gap-6">
                {applications.map(app => (
                  <div key={app.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-50 relative group hover:shadow-xl transition-all">
+                    <div className="absolute top-8 right-8">
+                       {app.englishLevel ? (
+                         <span className={`px-4 py-2 rounded-xl text-white font-bold text-sm shadow-md ${
+                           ["C1", "C2"].includes(app.englishLevel) ? "bg-green-500" :
+                           ["B1", "B2"].includes(app.englishLevel) ? "bg-blue-500" : "bg-orange-500"
+                         }`}>
+                           Level: {app.englishLevel}
+                         </span>
+                       ) : (
+                         <span className="px-4 py-2 rounded-xl bg-gray-100 text-gray-400 font-bold text-sm">Not Rated</span>
+                       )}
+                    </div>
+
                     <div className="absolute top-8 left-8">
                        <span className="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-xs font-bold">{app.status || "New"}</span>
                     </div>
-                    <div className="flex flex-col md:flex-row md:items-center gap-8">
+                    
+                    <div className="flex flex-col md:flex-row md:items-center gap-8 mt-8">
                        
                        <div 
                           onClick={() => onViewJob(app.jobId)}
@@ -789,9 +820,27 @@ function AdminPanelView({ jobs, onViewJob }) {
                        
                        <div className="w-full md:w-1/3 flex flex-col gap-4">
                             <div className="bg-gray-50 p-4 rounded-3xl flex flex-col items-center gap-2">
-                                <span className="text-xs font-bold text-gray-400 uppercase">Audio</span>
+                                <span className="text-xs font-bold text-gray-400 uppercase">Audio Assessment</span>
                                 {app.audioUrl ? (
-                                    <audio controls src={app.audioUrl} className="w-full h-10" />
+                                    <>
+                                      <audio controls src={app.audioUrl} className="w-full h-10" />
+                                      <div className="w-full flex items-center gap-2 mt-2">
+                                        <Languages size={16} className="text-gray-400"/>
+                                        <select 
+                                          className="w-full bg-white p-2 rounded-xl text-sm font-bold text-gray-600 border border-gray-200 outline-none cursor-pointer focus:border-blue-500 transition-all"
+                                          value={app.englishLevel || ""}
+                                          onChange={(e) => handleRateEnglish(app.id, e.target.value)}
+                                        >
+                                          <option value="" disabled>Rate English Level...</option>
+                                          <option value="A1">A1 (Beginner)</option>
+                                          <option value="A2">A2 (Elementary)</option>
+                                          <option value="B1">B1 (Intermediate)</option>
+                                          <option value="B2">B2 (Upper Interm.)</option>
+                                          <option value="C1">C1 (Advanced)</option>
+                                          <option value="C2">C2 (Fluent)</option>
+                                        </select>
+                                      </div>
+                                    </>
                                 ) : (
                                     <span className="text-red-400 text-xs font-bold">No Audio</span>
                                 )}
@@ -814,7 +863,6 @@ function AdminPanelView({ jobs, onViewJob }) {
         </div>
       )}
 
-      {/* --- Registered Users Tab --- */}
       {activeTab === "users" && (
         <div className="max-w-6xl mx-auto animate-in fade-in px-4 text-left">
           {users.length === 0 ? (
@@ -1075,7 +1123,6 @@ function ApplyField({ label, icon, placeholder, onChange, value }) {
     </div>
   );
 }
-// Cleaned up Select Component (English Only)
 function ApplySelect({ label, icon, options, onChange, value }) {
   return (
     <div className="space-y-2 text-left">
@@ -1091,10 +1138,12 @@ function ApplySelect({ label, icon, options, onChange, value }) {
   );
 }
 function AdminField({ label, placeholder, value, onChange }) {
-  return <div className="space-y-2 text-left">
-    <label className="block text-sm font-bold text-gray-400 mr-2 uppercase tracking-wide">{label}</label>
-    <input className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold text-left shadow-sm border border-gray-100 focus:ring-2 focus:ring-blue-500" value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}/>
-  </div>;
+  return (
+    <div className="space-y-2 text-left">
+      <label className="block text-sm font-bold text-gray-400 mr-2 uppercase tracking-wide">{label}</label>
+      <input className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold text-left shadow-sm border border-gray-100 focus:ring-2 focus:ring-blue-500" value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}/>
+    </div>
+  );
 }
 
 function Footer({ setView }) {
