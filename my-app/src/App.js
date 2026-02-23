@@ -4,8 +4,11 @@ import {
   Languages, MapPin, Search, Briefcase, Zap, ArrowLeft, Send, Loader2,
   Globe, Instagram, Linkedin, Phone, Mail, DollarSign, Clock, Plus, Eye, EyeOff, Lock, 
   CheckCircle, Trash2, Edit3, User, Upload, LayoutGrid, Mic, StopCircle, GraduationCap, 
-  Users, RotateCcw, ExternalLink, FileText, Download, LogIn, LogOut, X, Save 
+  Users, RotateCcw, ExternalLink, FileText, Download, LogIn, LogOut, X, Save, Calendar
 } from "lucide-react";
+
+// استدعاء اللوجو الجديد
+import logoImg from "./logo192.png";
 
 // Firebase Config
 import { db, auth } from "./firebase"; 
@@ -22,7 +25,7 @@ const UPLOAD_PRESET = "w1cmaa5s";
 function FeatureCard({ icon, title, desc }) {
   return (
     <motion.div whileHover={{ y: -10 }} className="bg-white p-10 rounded-[3rem] shadow-sm border border-gray-50 flex flex-col items-center text-center">
-      <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-6">{icon}</div>
+      <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mb-6">{icon}</div>
       <h3 className="text-2xl font-bold mb-4">{title}</h3>
       <p className="text-gray-500 font-medium">{desc}</p>
     </motion.div>
@@ -113,7 +116,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8f9fa] text-blue-600 gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8f9fa] text-purple-600 gap-4">
         <Loader2 size={60} className="animate-spin" />
         <p className="font-bold text-lg animate-pulse">Loading Jobs...</p>
       </div>
@@ -130,14 +133,13 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView("home")}>
-              <span className="font-bold text-2xl tracking-tight text-slate-800 hidden md:block">EgyptHire</span>
-              <div className="bg-blue-600 p-1.5 rounded-lg text-white shadow-sm"><Briefcase size={22}/></div>
+              <img src={logoImg} alt="PEAKY SCOUTS" className="h-12 object-contain" />
             </div>
             <div className="hidden md:flex gap-6 text-sm font-bold text-gray-500">
-              <button onClick={() => setView("home")} className={view === "home" ? "text-blue-600 border-b-2 border-blue-600 pb-1" : "hover:text-blue-600"}>Home</button>
-              <button onClick={() => setView("jobs")} className={view === "jobs" ? "text-blue-600 border-b-2 border-blue-600 pb-1" : "hover:text-blue-600"}>Find Jobs</button>
+              <button onClick={() => setView("home")} className={view === "home" ? "text-purple-600 border-b-2 border-purple-600 pb-1" : "hover:text-purple-600"}>Home</button>
+              <button onClick={() => setView("jobs")} className={view === "jobs" ? "text-purple-600 border-b-2 border-purple-600 pb-1" : "hover:text-purple-600"}>Find Jobs</button>
               {currentUser && (
-                <button onClick={() => setView("recommended")} className={view === "recommended" ? "text-blue-600 border-b-2 border-blue-600 pb-1" : "hover:text-blue-600"}>Recommended</button>
+                <button onClick={() => setView("recommended")} className={view === "recommended" ? "text-purple-600 border-b-2 border-purple-600 pb-1" : "hover:text-purple-600"}>Recommended</button>
               )}
             </div>
           </div>
@@ -145,10 +147,10 @@ export default function App() {
             
             {!currentUser ? (
               <motion.button 
-                whileHover={{ scale: 1.1, color: "#2563eb" }}
+                whileHover={{ scale: 1.1, color: "#9333ea" }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setView("login")} 
-                className="text-gray-500 hover:text-blue-600 transition-colors p-2 rounded-full"
+                className="text-gray-500 hover:text-purple-600 transition-colors p-2 rounded-full"
                 title="Login"
               >
                  <LogIn size={24} />
@@ -158,17 +160,17 @@ export default function App() {
                  whileHover={{ scale: 1.1 }}
                  whileTap={{ scale: 0.95 }}
                  onClick={() => setShowProfileModal(true)}
-                 className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold cursor-pointer shadow-lg hover:bg-blue-700 transition-colors border-2 border-blue-100"
+                 className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold cursor-pointer shadow-lg hover:bg-purple-700 transition-colors border-2 border-purple-100"
                >
                   {currentUser.name.charAt(0).toUpperCase()}
                </motion.div>
             )}
 
             <motion.button 
-              whileHover={{ scale: 1.1, color: "#2563eb" }}
+              whileHover={{ scale: 1.1, color: "#9333ea" }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setView("admin")} 
-              className="text-gray-500 hover:text-blue-600 transition-colors p-2 rounded-full"
+              className="text-gray-500 hover:text-purple-600 transition-colors p-2 rounded-full"
               title="Admin Panel"
             >
                <LayoutGrid size={24} />
@@ -259,8 +261,8 @@ function UserProfileModal({ user, onClose, onLogout, onUpdate }) {
       >
         <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"><X size={20}/></button>
         
-        <div className="bg-blue-600 p-8 text-center text-white">
-           <div className="w-24 h-24 bg-white text-blue-600 rounded-full flex items-center justify-center text-4xl font-black mx-auto mb-4 shadow-lg border-4 border-blue-100">
+        <div className="bg-purple-600 p-8 text-center text-white">
+           <div className="w-24 h-24 bg-white text-purple-600 rounded-full flex items-center justify-center text-4xl font-black mx-auto mb-4 shadow-lg border-4 border-purple-100">
               {user.name.charAt(0).toUpperCase()}
            </div>
            <h2 className="text-2xl font-black">{isEditing ? "Edit Profile" : user.name}</h2>
@@ -306,7 +308,7 @@ function UserProfileModal({ user, onClose, onLogout, onUpdate }) {
                 </div>
                 
                 {user.cvUrl && (
-                   <a href={user.cvUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 text-blue-600 font-bold bg-blue-50 p-4 rounded-2xl hover:bg-blue-100 transition-all">
+                   <a href={user.cvUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 text-purple-600 font-bold bg-purple-50 p-4 rounded-2xl hover:bg-purple-100 transition-all">
                       <FileText size={18}/> View CV
                    </a>
                 )}
@@ -332,7 +334,7 @@ function HomeView({ setView, onFastApply }) {
   return (
     <div className="text-center py-20 space-y-12">
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-        <div className="inline-block bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-4">
+        <div className="inline-block bg-purple-50 text-purple-600 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-4">
           Premium Recruitment Agency
         </div>
         <h1 className="text-5xl md:text-7xl font-black leading-tight text-slate-900">
@@ -345,7 +347,7 @@ function HomeView({ setView, onFastApply }) {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => setView("jobs")} 
-          className="bg-blue-600 text-white px-10 py-5 rounded-[2rem] font-bold text-xl shadow-xl flex items-center gap-3"
+          className="bg-purple-600 text-white px-10 py-5 rounded-[2rem] font-bold text-xl shadow-xl flex items-center gap-3"
         >
           Find Jobs <Search size={22}/>
         </motion.button>
@@ -353,7 +355,7 @@ function HomeView({ setView, onFastApply }) {
         <motion.button 
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={onFastApply}
+          onClick={onFastApply} // تم تصحيح اسم الدالة هنا ليعمل الزر
           className="bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-bold text-xl border border-gray-100 shadow-sm flex items-center gap-3"
         >
           Fast Apply <Zap size={22} className="text-orange-400 fill-orange-400"/>
@@ -390,7 +392,9 @@ function LoginView({ onLogin }) {
         if (cvJson.error) throw new Error(cvJson.error.message);
         uploadedCvUrl = cvJson.secure_url;
       }
+      
       const userData = { ...formData, cvUrl: uploadedCvUrl, joinedAt: serverTimestamp() };
+      
       const docRef = await addDoc(collection(db, "users"), userData);
       const userWithId = { ...userData, id: docRef.id };
       localStorage.setItem("egyptHireUser", JSON.stringify(userWithId));
@@ -426,19 +430,19 @@ function LoginView({ onLogin }) {
                 <input 
                   type="text" 
                   placeholder="https://drive.google.com/..." 
-                  className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none border border-transparent focus:bg-white focus:border-blue-200 transition-all text-sm"
+                  className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none border border-transparent focus:bg-white focus:border-purple-200 transition-all text-sm"
                   onChange={e => setFormData({...formData, cvUrl: e.target.value})}
                 />
                 <div className="relative">
                    <input type="file" id="cv-quick" className="hidden" accept=".pdf,.doc" onChange={e => setCvFile(e.target.files[0])} />
-                   <label htmlFor="cv-quick" className={`h-full px-4 rounded-2xl flex items-center justify-center cursor-pointer transition-all ${cvFile ? 'bg-green-100 text-green-600' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                   <label htmlFor="cv-quick" className={`h-full px-4 rounded-2xl flex items-center justify-center cursor-pointer transition-all ${cvFile ? 'bg-green-100 text-green-600' : 'bg-purple-50 text-purple-600 hover:bg-purple-100'}`}>
                       {cvFile ? <CheckCircle size={20}/> : <Upload size={20}/>}
                    </label>
                 </div>
              </div>
            </div>
 
-           <button disabled={loading} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-xl shadow-xl flex items-center justify-center gap-2 mt-4 hover:bg-blue-700 transition-all">
+           <button disabled={loading} className="w-full bg-purple-600 text-white py-4 rounded-2xl font-bold text-xl shadow-xl flex items-center justify-center gap-2 mt-4 hover:bg-purple-700 transition-all">
              {loading ? <Loader2 className="animate-spin"/> : <><Send size={20} /> Submit</>}
            </button>
         </form>
@@ -450,12 +454,12 @@ function LoginView({ onLogin }) {
 function RecommendedJobsView({ jobs, user, onViewDetails }) {
   return (
     <div className="space-y-8 animate-in fade-in">
-       <div className="bg-blue-600 text-white p-8 rounded-[3rem] shadow-xl text-center relative overflow-hidden">
+       <div className="bg-purple-600 text-white p-8 rounded-[3rem] shadow-xl text-center relative overflow-hidden">
           <div className="relative z-10">
              <h2 className="text-3xl font-black mb-2">Hello, {user.name.split(" ")[0]}! 🚀</h2>
              <p className="opacity-90 font-bold">Experience: {user.experience} • Language: {user.language}</p>
           </div>
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-blue-600 to-blue-400 opacity-50"></div>
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-purple-600 to-purple-400 opacity-50"></div>
        </div>
 
        {jobs.length > 0 ? (
@@ -506,7 +510,7 @@ function JobsListView({ jobs, filters, setFilters, onViewDetails, hideFilters = 
                 <RotateCcw size={16} /> Reset
               </button>
            </div>
-           <span className="bg-blue-600 text-white px-6 py-2.5 rounded-2xl font-bold w-full md:w-auto text-center mt-4 md:mt-0">{jobs.length} Jobs Available</span>
+           <span className="bg-purple-600 text-white px-6 py-2.5 rounded-2xl font-bold w-full md:w-auto text-center mt-4 md:mt-0">{jobs.length} Jobs Available</span>
         </div>
       )}
 
@@ -520,19 +524,19 @@ function JobsListView({ jobs, filters, setFilters, onViewDetails, hideFilters = 
             whileHover="hover"
             className="bg-white p-8 rounded-[3rem] border border-gray-50 shadow-xl flex flex-col items-center text-center group"
           >
-            <span className="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase mb-4 self-end tracking-widest">{job.language}</span>
+            <span className="bg-purple-50 text-purple-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase mb-4 self-end tracking-widest">{job.language}</span>
             <h3 
               onClick={() => onViewDetails(job)}
-              className="text-2xl font-black mb-1 cursor-pointer hover:text-blue-600 transition-colors"
+              className="text-2xl font-black mb-1 cursor-pointer hover:text-purple-600 transition-colors"
             >
               {job.title}
             </h3>
             <p className="text-gray-400 font-bold mb-6">{job.company}</p>
             <div className="w-full space-y-2 mb-8">
-              <JobInfoRow icon={<MapPin size={18} className="text-blue-500"/>} label={job.location} />
+              <JobInfoRow icon={<MapPin size={18} className="text-purple-500"/>} label={job.location} />
               <JobInfoRow icon={<DollarSign size={18} className="text-green-500"/>} label={job.salary} />
             </div>
-            <button onClick={() => onViewDetails(job)} className="w-full bg-[#0f172a] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-blue-600 transition-all">
+            <button onClick={() => onViewDetails(job)} className="w-full bg-[#0f172a] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-purple-600 transition-all">
               View Details <ArrowLeft size={20} className="rotate-180"/>
             </button>
           </motion.div>
@@ -546,12 +550,12 @@ function JobDetailsView({ job, onBack, onApply }) {
   if (!job) return null;
   return (
     <div className="max-w-5xl mx-auto py-10 animate-in fade-in zoom-in duration-300">
-      <button onClick={onBack} className="mb-6 flex items-center gap-2 text-gray-400 font-bold hover:text-blue-600 transition-colors">
+      <button onClick={onBack} className="mb-6 flex items-center gap-2 text-gray-400 font-bold hover:text-purple-600 transition-colors">
         <ArrowLeft size={20} /> Back to Search
       </button>
 
       <div className="bg-white rounded-[3.5rem] overflow-hidden shadow-2xl border border-gray-50">
-        <div className="bg-blue-600 p-12 text-white relative">
+        <div className="bg-purple-600 p-12 text-white relative">
           <span className="bg-white/20 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest absolute top-10 left-10">
             {job.language} Specialization
           </span>
@@ -566,7 +570,7 @@ function JobDetailsView({ job, onBack, onApply }) {
             <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-gray-200 border border-gray-50 text-center relative">
               <p className="text-gray-400 text-xs font-bold mb-8">JOB OVERVIEW</p>
               <div className="space-y-8">
-                <DetailStat icon={<MapPin className="text-blue-600"/>} title="Location" value={job.location} />
+                <DetailStat icon={<MapPin className="text-purple-600"/>} title="Location" value={job.location} />
                 <DetailStat icon={<DollarSign className="text-green-600"/>} title="Salary" value={job.salary} />
                 <DetailStat icon={<Briefcase className="text-purple-600"/>} title="Experience" value={job.experience} />
                 <DetailStat icon={<Clock className="text-orange-600"/>} title="Shift" value={job.shift} />
@@ -575,7 +579,7 @@ function JobDetailsView({ job, onBack, onApply }) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={onApply} 
-                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 flex items-center justify-center gap-2 mt-10 hover:bg-blue-700 transition-colors"
+                className="w-full bg-purple-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-purple-200 flex items-center justify-center gap-2 mt-10 hover:bg-purple-700 transition-colors"
               >
                 <Send size={20} className="-mt-1"/> Apply Now
               </motion.button>
@@ -585,7 +589,7 @@ function JobDetailsView({ job, onBack, onApply }) {
           <div className="lg:col-span-2 space-y-12 text-left">
             <section>
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-1.5 h-8 bg-blue-600 rounded-full"></div>
+                <div className="w-1.5 h-8 bg-purple-600 rounded-full"></div>
                 <h3 className="text-3xl font-black text-slate-800">Job Description</h3>
               </div>
               <p className="text-gray-500 text-xl leading-relaxed whitespace-pre-line font-medium">{job.description}</p>
@@ -670,11 +674,11 @@ function AdminPanelView({ jobs, onViewJob }) {
 
   if (!isAuth) return (
     <div className="flex justify-center items-center py-20 px-4">
-      <div className="bg-white p-10 md:p-12 rounded-[3rem] shadow-2xl border border-gray-50 w-full max-md text-center">
+      <div className="bg-white p-10 md:p-12 rounded-[3rem] shadow-2xl border border-gray-50 w-full max-w-md text-center">
         <Lock className="mx-auto mb-6 text-gray-300" size={48}/>
         <h2 className="text-2xl font-bold mb-8">Admin Login</h2>
         <div className="relative mb-6">
-           <input type={showPass ? "text" : "password"} onChange={(e)=>setPass(e.target.value)} className="w-full bg-blue-50/30 p-5 rounded-2xl text-center font-bold outline-none border border-blue-50 focus:border-blue-500 transition-all" placeholder="******"/>
+           <input type={showPass ? "text" : "password"} onChange={(e)=>setPass(e.target.value)} className="w-full bg-purple-50/30 p-5 rounded-2xl text-center font-bold outline-none border border-purple-50 focus:border-purple-500 transition-all" placeholder="******"/>
            <button onClick={()=>setShowPass(!showPass)} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">{showPass ? <EyeOff size={22}/> : <Eye size={22}/>}</button>
         </div>
         <button onClick={() => pass === "negrootech" ? setIsAuth(true) : alert("Wrong Password")} className="w-full bg-[#0f172a] text-white py-5 rounded-2xl font-bold shadow-xl">Login</button>
@@ -685,13 +689,13 @@ function AdminPanelView({ jobs, onViewJob }) {
   return (
     <div className="py-10 space-y-10">
       <div className="flex flex-col md:flex-row justify-center gap-4 mb-10 px-4">
-        <button onClick={() => setActiveTab("jobs")} className={`px-8 py-4 rounded-2xl font-bold transition-all ${activeTab === "jobs" ? "bg-blue-600 text-white shadow-lg" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+        <button onClick={() => setActiveTab("jobs")} className={`px-8 py-4 rounded-2xl font-bold transition-all ${activeTab === "jobs" ? "bg-purple-600 text-white shadow-lg" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
            Manage Jobs
         </button>
-        <button onClick={() => setActiveTab("applications")} className={`px-8 py-4 rounded-2xl font-bold transition-all ${activeTab === "applications" ? "bg-blue-600 text-white shadow-lg" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+        <button onClick={() => setActiveTab("applications")} className={`px-8 py-4 rounded-2xl font-bold transition-all ${activeTab === "applications" ? "bg-purple-600 text-white shadow-lg" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
            Applications ({applications.length})
         </button>
-        <button onClick={() => setActiveTab("users")} className={`px-8 py-4 rounded-2xl font-bold transition-all ${activeTab === "users" ? "bg-blue-600 text-white shadow-lg" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+        <button onClick={() => setActiveTab("users")} className={`px-8 py-4 rounded-2xl font-bold transition-all ${activeTab === "users" ? "bg-purple-600 text-white shadow-lg" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
            Users ({users.length})
         </button>
       </div>
@@ -716,7 +720,7 @@ function AdminPanelView({ jobs, onViewJob }) {
               </div>
               <textarea value={form.description} placeholder="Job Description" className="w-full bg-gray-50 p-5 rounded-2xl h-32 outline-none font-bold shadow-sm border border-gray-100" onChange={e => setForm({...form, description: e.target.value})}/>
               <textarea value={form.requirements} placeholder="Requirements" className="w-full bg-gray-50 p-5 rounded-2xl h-32 outline-none font-bold shadow-sm border border-gray-100" onChange={e => setForm({...form, requirements: e.target.value})}/>
-              <button disabled={loading} onClick={saveJob} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold text-xl flex justify-center items-center gap-3 shadow-xl">
+              <button disabled={loading} onClick={saveJob} className="w-full bg-purple-600 text-white py-5 rounded-2xl font-bold text-xl flex justify-center items-center gap-3 shadow-xl">
                 {loading ? <Loader2 className="animate-spin"/> : <Plus size={24}/>} {editingId ? "Save Changes" : "Post Job"}
               </button>
             </div>
@@ -724,9 +728,9 @@ function AdminPanelView({ jobs, onViewJob }) {
           <div className="max-w-4xl mx-auto space-y-4">
             <h3 className="text-2xl font-bold mb-6 mr-4">Active Jobs</h3>
             {jobs.map(j => (
-              <div key={j.id} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-50 flex justify-between items-center">
+              <div key={j.id} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex justify-between items-center">
                 <div className="flex gap-2">
-                  <button onClick={() => {setEditingId(j.id); setForm(j); window.scrollTo({top:0, behavior:"smooth"});}} className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all"><Edit3 size={20}/></button>
+                  <button onClick={() => {setEditingId(j.id); setForm(j); window.scrollTo({top:0, behavior:"smooth"});}} className="p-3 bg-purple-50 text-purple-600 rounded-2xl hover:bg-purple-600 hover:text-white transition-all"><Edit3 size={20}/></button>
                   <button onClick={async () => window.confirm("Are you sure?") && await deleteDoc(doc(db, "jobs", j.id))} className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={20}/></button>
                 </div>
                 <div>
@@ -751,7 +755,7 @@ function AdminPanelView({ jobs, onViewJob }) {
                        {app.englishLevel ? (
                          <span className={`px-4 py-2 rounded-xl text-white font-bold text-sm shadow-md ${
                            ["C1", "C2"].includes(app.englishLevel) ? "bg-green-500" :
-                           ["B1", "B2"].includes(app.englishLevel) ? "bg-blue-500" : "bg-orange-500"
+                           ["B1", "B2"].includes(app.englishLevel) ? "bg-purple-500" : "bg-orange-500"
                          }`}>
                            Level: {app.englishLevel}
                          </span>
@@ -761,7 +765,7 @@ function AdminPanelView({ jobs, onViewJob }) {
                     </div>
 
                     <div className="absolute top-8 left-8">
-                       <span className="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-xs font-bold">{app.status || "New"}</span>
+                       <span className="bg-purple-50 text-purple-600 px-4 py-1.5 rounded-full text-xs font-bold">{app.status || "New"}</span>
                     </div>
                     
                     <div className="flex flex-col md:flex-row md:items-center gap-8 mt-8">
@@ -770,14 +774,14 @@ function AdminPanelView({ jobs, onViewJob }) {
                           onClick={() => onViewJob(app.jobId)}
                           className="flex items-center gap-4 cursor-pointer hover:bg-gray-50 p-2 rounded-3xl transition-all group/profile"
                        >
-                           <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center text-blue-600 font-bold text-2xl group-hover/profile:bg-blue-600 group-hover/profile:text-white transition-colors">
+                           <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center text-purple-600 font-bold text-2xl group-hover/profile:bg-purple-600 group-hover/profile:text-white transition-colors">
                               {app.name.charAt(0)}
                            </div>
                            <div>
-                              <h3 className="text-2xl font-black text-slate-800 group-hover/profile:text-blue-600 transition-colors underline-offset-4 group-hover/profile:underline">
+                              <h3 className="text-2xl font-black text-slate-800 group-hover/profile:text-purple-600 transition-colors underline-offset-4 group-hover/profile:underline">
                                 {app.name}
                               </h3>
-                              <p className="text-sm font-bold text-blue-600 mt-1 flex items-center gap-1 group-hover/profile:text-blue-700">
+                              <p className="text-sm font-bold text-purple-600 mt-1 flex items-center gap-1 group-hover/profile:text-purple-700">
                                  {app.jobTitle} <ExternalLink size={14} className="mb-0.5"/>
                               </p>
                            </div>
@@ -786,9 +790,11 @@ function AdminPanelView({ jobs, onViewJob }) {
                        <div className="flex-1 space-y-2 mx-4">
                           <p className="text-gray-400 font-bold flex items-center gap-2"><Phone size={16}/> {app.phone}</p>
                           <div className="flex gap-4 mt-2 text-sm text-gray-500 flex-wrap">
-                             <span>Exp: {app.experience}</span>
-                             <span>•</span>
-                             <span>Gender: {app.gender}</span>
+                              {app.age && <span>Age: {app.age}</span>}
+                              {app.age && <span>•</span>}
+                              <span>Exp: {app.experience}</span>
+                              <span>•</span>
+                              <span>Gender: {app.gender}</span>
                           </div>
                        </div>
                        
@@ -801,7 +807,7 @@ function AdminPanelView({ jobs, onViewJob }) {
                                       <div className="w-full flex items-center gap-2 mt-2">
                                         <Languages size={16} className="text-gray-400"/>
                                         <select 
-                                          className="w-full bg-white p-2 rounded-xl text-sm font-bold text-gray-600 border border-gray-200 outline-none cursor-pointer focus:border-blue-500 transition-all"
+                                          className="w-full bg-white p-2 rounded-xl text-sm font-bold text-gray-600 border border-gray-200 outline-none cursor-pointer focus:border-purple-500 transition-all"
                                           value={app.englishLevel || ""}
                                           onChange={(e) => handleRateEnglish(app.id, e.target.value)}
                                         >
@@ -820,7 +826,7 @@ function AdminPanelView({ jobs, onViewJob }) {
                                 )}
                             </div>
                             {app.cvUrl && (
-                                <a href={app.cvUrl} target="_blank" rel="noreferrer" className="bg-blue-600 text-white p-3 rounded-2xl flex items-center justify-center gap-2 font-bold hover:bg-blue-700 transition-colors">
+                                <a href={app.cvUrl} target="_blank" rel="noreferrer" className="bg-purple-600 text-white p-3 rounded-2xl flex items-center justify-center gap-2 font-bold hover:bg-purple-700 transition-colors">
                                     <Download size={18}/> View CV
                                 </a>
                             )}
@@ -889,10 +895,13 @@ function ApplicationPage({ job, onBack, user }) {
   const [formData, setFormData] = useState({
     name: user?.name || "", 
     phone: user?.phone || "", 
+    age: "", 
     gender: "", 
     status: "", 
     experience: user?.experience || ""
   });
+
+  const scriptUrl = "https://script.google.com/macros/s/AKfycbyFMRbyZSjyp8pXTymYBm2zhw_uoEhbXUEvm4CbxE7o9Fxs2Nf-3aovgry-Qa-DDHf8/exec";
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -932,11 +941,11 @@ function ApplicationPage({ job, onBack, user }) {
   };
 
   const stopRecording = () => { if(mediaRecorder.current) mediaRecorder.current.stop(); setIsRecording(false); };
-
+  
   const handleApply = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.phone || !formData.gender || !formData.status || !formData.experience || !audioUrl) {
-      alert("Missing Data");
+    if (!formData.name || !formData.phone || !formData.age || !formData.gender || !formData.status || !formData.experience || !audioUrl) {
+      alert("Missing Data / تأكد من إدخال جميع البيانات بما فيها العمر والصوت");
       return;
     }
     setLoading(true);
@@ -972,17 +981,39 @@ function ApplicationPage({ job, onBack, user }) {
         publicCvUrl = cvJson.secure_url;
       }
 
-      await addDoc(collection(db, "applications"), {
+      const sheetData = new FormData();
+      sheetData.append('name', formData.name);
+      sheetData.append('phone', formData.phone);
+      sheetData.append('age', formData.age); 
+      sheetData.append('education', formData.status);
+      sheetData.append('gender', formData.gender);
+      sheetData.append('experience', formData.experience);
+      sheetData.append('jobTitle', job.title);
+      sheetData.append('company', job.company);
+      sheetData.append('cvUrl', publicCvUrl);
+      sheetData.append('audioUrl', publicAudioUrl);
+
+      // 1. إرسال البيانات لجوجل شيت بدون انتظار
+      fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' }).catch(e => console.error(e));
+      
+      // 2. إظهار رسالة النجاح فوراً للمستخدم
+      setSuccess(true);
+      setLoading(false);
+
+      // 3. محاولة الإرسال لفايربيس في الخلفية 
+      addDoc(collection(db, "applications"), {
         ...formData,
         jobTitle: job.title,
         jobId: job.id,
         audioUrl: publicAudioUrl, 
         cvUrl: publicCvUrl,
         appliedAt: serverTimestamp(),
-      });
-      setSuccess(true);
-    } catch (err) { alert(err.message); }
-    setLoading(false);
+      }).catch(err => console.log("Firebase is paused"));
+
+    } catch (err) { 
+      alert(err.message); 
+      setLoading(false);
+    }
   };
 
   if (success) return (
@@ -990,13 +1021,13 @@ function ApplicationPage({ job, onBack, user }) {
       <CheckCircle size={60} className="text-green-500 mx-auto mb-6"/>
       <h2 className="text-3xl font-black mb-4 text-slate-800">Application Sent Successfully!</h2>
       <p className="text-gray-400 font-bold mb-8 italic">Our HR team will contact you soon.</p>
-      <button onClick={() => window.location.reload()} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-100">Back to Home</button>
+      <button onClick={() => window.location.reload()} className="w-full bg-purple-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-purple-100">Back to Home</button>
     </motion.div>
   );
 
   return (
     <div className="max-w-3xl mx-auto py-10 animate-in slide-in-from-bottom-6 px-4">
-      <button onClick={onBack} className="mb-6 font-bold text-gray-400 flex items-center gap-2 hover:text-blue-600 transition-all">
+      <button onClick={onBack} className="mb-6 font-bold text-gray-400 flex items-center gap-2 hover:text-purple-600 transition-all">
         <ArrowLeft size={18} /> Back to Search
       </button>
       <div className="bg-white rounded-[3rem] shadow-2xl p-8 md:p-12 border border-gray-100 text-left">
@@ -1005,7 +1036,7 @@ function ApplicationPage({ job, onBack, user }) {
         <form onSubmit={handleApply} className="space-y-8">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <ApplyField label="Full Name" icon={<User size={20}/>} placeholder="Ahmed Mohamed" value={formData.name} onChange={v => setFormData({...formData, name: v})}/>
-              <ApplyField label="Phone" icon={<Phone size={20}/>} placeholder="01xxxxxxxxx" value={formData.phone} onChange={v => setFormData({...formData, phone: v})}/>
+              <ApplyField label="Phone" icon={<Phone size={20}/>} placeholder="01xxxxxxxxx" value={formData.phone} type="tel" onChange={v => setFormData({...formData, phone: v})}/>
            </div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1013,7 +1044,10 @@ function ApplicationPage({ job, onBack, user }) {
               <ApplySelect label="Gender" icon={<Users size={20}/>} options={["Male", "Female"]} onChange={v => setFormData({...formData, gender: v})} />
            </div>
 
-           <ApplySelect label="Experience" icon={<Briefcase size={20}/>} value={formData.experience} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} />
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <ApplySelect label="Experience" icon={<Briefcase size={20}/>} value={formData.experience} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} />
+             <ApplyField label="Age" icon={<Calendar size={20}/>} placeholder="e.g. 25" value={formData.age} type="number" onChange={v => setFormData({...formData, age: v})}/>
+           </div>
 
            <div className="relative group">
                <input 
@@ -1023,7 +1057,7 @@ function ApplicationPage({ job, onBack, user }) {
                  accept=".pdf,.doc,.docx"
                  onChange={(e) => setCvFile(e.target.files[0])}
                />
-               <label htmlFor="cv-upload" className={`border-2 border-dashed rounded-3xl p-10 text-center flex flex-col items-center justify-center cursor-pointer transition-all ${cvFile ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50/50 hover:bg-blue-50'}`}>
+               <label htmlFor="cv-upload" className={`border-2 border-dashed rounded-3xl p-10 text-center flex flex-col items-center justify-center cursor-pointer transition-all ${cvFile ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50/50 hover:bg-purple-50'}`}>
                  {cvFile ? (
                      <>
                        <CheckCircle className="text-green-500 mb-3" size={36}/>
@@ -1031,8 +1065,8 @@ function ApplicationPage({ job, onBack, user }) {
                      </>
                  ) : (
                      <>
-                       <Upload className="text-gray-400 mb-3 group-hover:text-blue-500" size={36}/>
-                       <p className="font-bold text-gray-500 group-hover:text-blue-600">
+                       <Upload className="text-gray-400 mb-3 group-hover:text-purple-500" size={36}/>
+                       <p className="font-bold text-gray-500 group-hover:text-purple-600">
                           {user?.cvUrl ? "CV Link (Google Drive)" : "Upload CV (Optional)"}
                        </p>
                      </>
@@ -1040,13 +1074,13 @@ function ApplicationPage({ job, onBack, user }) {
                </label>
            </div>
 
-           <div className="bg-blue-50/30 p-8 rounded-[2rem] border border-blue-100 text-center space-y-6">
-            <label className="text-lg font-black text-blue-900 block">Introduce yourself and record a 2-minute record to determine your level</label>
+           <div className="bg-purple-50/30 p-8 rounded-[2rem] border border-purple-100 text-center space-y-6">
+            <label className="text-lg font-black text-purple-900 block">Introduce yourself and record a 2-minute record to determine your level</label>
             <div className="flex flex-col items-center gap-6">
               {!audioUrl ? (
                 <>
                   {isRecording && <div className="text-3xl font-black text-red-500 animate-pulse font-mono">{formatTime(recordingTime)}</div>}
-                  <button type="button" onClick={isRecording ? stopRecording : startRecording} className={`w-24 h-24 rounded-full flex items-center justify-center text-white transition-all shadow-2xl ${isRecording ? 'bg-red-500 animate-pulse shadow-red-200' : 'bg-blue-600 shadow-blue-300 hover:scale-105'}`}>
+                  <button type="button" onClick={isRecording ? stopRecording : startRecording} className={`w-24 h-24 rounded-full flex items-center justify-center text-white transition-all shadow-2xl ${isRecording ? 'bg-red-500 animate-pulse shadow-red-200' : 'bg-purple-600 shadow-purple-300 hover:scale-105'}`}>
                     {isRecording ? <StopCircle size={40}/> : <Mic size={40}/>}
                   </button>
                 </>
@@ -1065,7 +1099,7 @@ function ApplicationPage({ job, onBack, user }) {
              whileTap={{ scale: 0.95 }} 
              type="submit" 
              disabled={loading} 
-             className="w-full bg-blue-600 text-white py-5 rounded-[2rem] font-bold text-2xl flex justify-center items-center gap-3 shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all disabled:bg-gray-400 disabled:shadow-none"
+             className="w-full bg-purple-600 text-white py-5 rounded-[2rem] font-bold text-2xl flex justify-center items-center gap-3 shadow-2xl shadow-purple-200 hover:bg-purple-700 transition-all disabled:bg-gray-400 disabled:shadow-none"
            >
              {loading ? <Loader2 className="animate-spin"/> : <><Send size={28} className="-mt-1"/> Submit Application</>}
            </motion.button>
@@ -1086,24 +1120,26 @@ function DetailStat({ icon, title, value }) {
     <p className="text-xl font-black text-slate-800 leading-tight">{value}</p>
   </div>;
 }
-function ApplyField({ label, icon, placeholder, onChange, value }) {
+
+function ApplyField({ label, icon, placeholder, onChange, value, type = "text" }) {
   return (
     <div className="space-y-2 text-left">
       <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">{label} *</label>
       <div className="relative">
         <div className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>
-        <input required defaultValue={value} className="w-full bg-gray-50 p-5 pr-14 rounded-3xl font-bold outline-none border border-transparent focus:bg-white focus:border-blue-200 focus:ring-4 focus:ring-blue-50 transition-all text-left shadow-sm placeholder:text-gray-300" placeholder={placeholder} onChange={e => onChange(e.target.value)}/>
+        <input type={type} required defaultValue={value} className="w-full bg-gray-50 p-5 pr-14 rounded-3xl font-bold outline-none border border-transparent focus:bg-white focus:border-purple-200 focus:ring-4 focus:ring-purple-50 transition-all text-left shadow-sm placeholder:text-gray-300" placeholder={placeholder} onChange={e => onChange(e.target.value)}/>
       </div>
     </div>
   );
 }
+
 function ApplySelect({ label, icon, options, onChange, value }) {
   return (
     <div className="space-y-2 text-left">
       <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">{label} *</label>
       <div className="relative">
         <div className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>
-        <select required defaultValue={value} className="w-full bg-gray-50 p-5 pr-14 rounded-3xl font-bold outline-none border border-transparent focus:bg-white focus:border-blue-200 focus:ring-4 focus:ring-blue-50 transition-all shadow-sm text-left appearance-none cursor-pointer text-gray-600" onChange={e => onChange(e.target.value)}>
+        <select required defaultValue={value} className="w-full bg-gray-50 p-5 pr-14 rounded-3xl font-bold outline-none border border-transparent focus:bg-white focus:border-purple-200 focus:ring-4 focus:ring-purple-50 transition-all shadow-sm text-left appearance-none cursor-pointer text-gray-600" onChange={e => onChange(e.target.value)}>
           <option value="">Select Option</option>
           {options.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
@@ -1111,11 +1147,12 @@ function ApplySelect({ label, icon, options, onChange, value }) {
     </div>
   );
 }
+
 function AdminField({ label, placeholder, value, onChange }) {
   return (
     <div className="space-y-2 text-left">
       <label className="block text-sm font-bold text-gray-400 mr-2 uppercase tracking-wide">{label}</label>
-      <input className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold text-left shadow-sm border border-gray-100 focus:ring-2 focus:ring-blue-500" value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}/>
+      <input className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold text-left shadow-sm border border-gray-100 focus:ring-2 focus:ring-purple-500" value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}/>
     </div>
   );
 }
@@ -1126,28 +1163,30 @@ function Footer({ setView }) {
       <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-12 font-bold text-slate-800 text-left">
         <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <motion.div whileHover={{ scale: 1.02 }} className="bg-gray-50/50 p-10 rounded-[2.5rem] border border-gray-100 flex flex-col items-center shadow-sm">
-             <Mail className="text-blue-600 mb-2" size={26}/>
+             <Mail className="text-purple-600 mb-2" size={26}/>
              <span className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-black">Email Support</span>
-             <p className="text-slate-800 break-all text-center">a7mdelnagar297@gmail.com</p>
+             <p className="text-slate-800 break-all text-center">contact@peakyscouts.eg</p>
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} className="bg-gray-50/50 p-10 rounded-[2.5rem] border border-gray-100 flex flex-col items-center shadow-sm">
-             <Phone className="text-blue-600 mb-2" size={26}/>
+             <Phone className="text-purple-600 mb-2" size={26}/>
              <span className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-black">Phone</span>
              <p className="text-slate-800">01099119352</p>
           </motion.div>
         </div>
         <div className="flex flex-col items-center md:items-end space-y-4">
-           <div className="flex items-center gap-2 text-3xl font-black">EgyptHire <div className="bg-blue-600 p-1.5 rounded-lg text-white shadow-sm shadow-blue-200"><Briefcase size={22}/></div></div>
-           <p className="text-gray-400 text-sm font-medium">We connect talents with top companies.</p>
+           <div className="flex items-center gap-2 text-3xl font-black">
+              <img src={logoImg} alt="PEAKY SCOUTS" className="h-16 object-contain mb-2" />
+           </div>
+           <p className="text-gray-400 text-sm font-medium">By order of the Peaky Scouts, we find the best jobs.</p>
            <div className="flex gap-4 text-gray-400">
              {[Globe, Instagram, Linkedin].map((Icon, i) => (
-                <motion.div key={i} whileHover={{ y:-5, color: "#2563eb" }} className="cursor-pointer transition-colors"><Icon size={22}/></motion.div>
+                <motion.div key={i} whileHover={{ y:-5, color: "#9333ea" }} className="cursor-pointer transition-colors"><Icon size={22}/></motion.div>
              ))}
            </div>
            <div className="flex gap-6 text-[10px] text-gray-300 uppercase tracking-widest pt-4">
-              <button onClick={() => setView("home")} className="hover:text-blue-600 transition-colors">Home</button>
-              <button onClick={() => setView("jobs")} className="hover:text-blue-600 transition-colors">Jobs</button>
-              <button onClick={() => setView("admin")} className="hover:text-blue-600 transition-colors">Admin</button>
+              <button onClick={() => setView("home")} className="hover:text-purple-600 transition-colors">Home</button>
+              <button onClick={() => setView("jobs")} className="hover:text-purple-600 transition-colors">Jobs</button>
+              <button onClick={() => setView("admin")} className="hover:text-purple-600 transition-colors">Admin</button>
            </div>
         </div>
       </div>
