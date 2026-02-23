@@ -1,16 +1,16 @@
 {
   "files": {
-    "main.css": "/static/css/main.e6c13ad2.css",
-    "main.js": "/static/js/main.ae17c1ff.js",
-    "static/js/453.fd2f0c4a.chunk.js": "/static/js/453.fd2f0c4a.chunk.js",
-    "static/media/logo192.png": "/static/media/logo192.611669f80c8be31b69bf.png",
-    "index.html": "/index.html",
-    "main.e6c13ad2.css.map": "/static/css/main.e6c13ad2.css.map",
-    "main.ae17c1ff.js.map": "/static/js/main.ae17c1ff.js.map",
-    "453.fd2f0c4a.chunk.js.map": "/static/js/453.fd2f0c4a.chunk.js.map"
+    "main.css": "/Egypt_Hire/static/css/main.e6c13ad2.css",
+    "main.js": "/Egypt_Hire/static/js/main.bf980ba7.js",
+    "static/js/453.fd2f0c4a.chunk.js": "/Egypt_Hire/static/js/453.fd2f0c4a.chunk.js",
+    "static/media/logo192.png": "/Egypt_Hire/static/media/logo192.611669f80c8be31b69bf.png",
+    "index.html": "/Egypt_Hire/index.html",
+    "main.e6c13ad2.css.map": "/Egypt_Hire/static/css/main.e6c13ad2.css.map",
+    "main.bf980ba7.js.map": "/Egypt_Hire/static/js/main.bf980ba7.js.map",
+    "453.fd2f0c4a.chunk.js.map": "/Egypt_Hire/static/js/453.fd2f0c4a.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.ae17c1ff.js"
+    "static/js/main.bf980ba7.js"
   ]
 }
