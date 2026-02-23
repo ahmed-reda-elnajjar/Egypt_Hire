@@ -7,9 +7,6 @@ import {
   Users, RotateCcw, ExternalLink, FileText, Download, LogIn, LogOut, X, Save 
 } from "lucide-react";
 
-// استدعاء ملف الامتحان
-import EnglishTest from "./EnglishTest";
-
 // Firebase Config
 import { db, auth } from "./firebase"; 
 import { 
@@ -48,7 +45,6 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // --- Dynamic Options State ---
   const [uniqueLocations, setUniqueLocations] = useState([]);
   const [uniqueLanguages, setUniqueLanguages] = useState([]);
 
@@ -68,7 +64,6 @@ export default function App() {
       setJobs(fetchedJobs);
       setLoading(false);
 
-      // Smart Extraction Logic
       const locs = [...new Set(fetchedJobs.map(j => j.location?.trim()).filter(Boolean))];
       const langs = [...new Set(fetchedJobs.map(j => j.language?.trim()).filter(Boolean))];
       setUniqueLocations(locs);
@@ -210,17 +205,6 @@ export default function App() {
                 onViewDetails={(j) => { setSelectedJob(j); setView("details"); }}
                 locations={uniqueLocations} 
                 languages={uniqueLanguages} 
-             />
-          )}
-
-          {/* --- عرض صفحة الامتحان --- */}
-          {view === "test" && (
-             <EnglishTest 
-               onBack={() => setView("home")} 
-               onFinish={(level) => { 
-                  alert("Your Level is: " + level); 
-                  setView("jobs"); 
-               }} 
              />
           )}
 
@@ -374,16 +358,6 @@ function HomeView({ setView, onFastApply }) {
         >
           Fast Apply <Zap size={22} className="text-orange-400 fill-orange-400"/>
         </motion.button>
-
-        {/* --- زر الامتحان الجديد (بجانب Fast Apply) --- */}
-        <motion.button 
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setView("test")} 
-          className="bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-bold text-xl border border-gray-100 shadow-sm flex items-center gap-3"
-        >
-          Test English <CheckCircle size={22} className="text-green-500"/>
-        </motion.button>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-20">
@@ -501,7 +475,7 @@ function JobsListView({ jobs, filters, setFilters, onViewDetails, hideFilters = 
       {!hideFilters && (
         <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center justify-between">
            <div className="flex gap-4 items-center flex-1">
-              
+             
               <select 
                 value={filters.language}
                 onChange={(e) => setFilters(p => ({...p, language: e.target.value}))} 
@@ -696,7 +670,7 @@ function AdminPanelView({ jobs, onViewJob }) {
 
   if (!isAuth) return (
     <div className="flex justify-center items-center py-20 px-4">
-      <div className="bg-white p-10 md:p-12 rounded-[3rem] shadow-2xl border border-gray-50 w-full max-w-md text-center">
+      <div className="bg-white p-10 md:p-12 rounded-[3rem] shadow-2xl border border-gray-50 w-full max-md text-center">
         <Lock className="mx-auto mb-6 text-gray-300" size={48}/>
         <h2 className="text-2xl font-bold mb-8">Admin Login</h2>
         <div className="relative mb-6">
@@ -1043,26 +1017,26 @@ function ApplicationPage({ job, onBack, user }) {
 
            <div className="relative group">
                <input 
-                  type="file" 
-                  id="cv-upload" 
-                  className="hidden" 
-                  accept=".pdf,.doc,.docx"
-                  onChange={(e) => setCvFile(e.target.files[0])}
+                 type="file" 
+                 id="cv-upload" 
+                 className="hidden" 
+                 accept=".pdf,.doc,.docx"
+                 onChange={(e) => setCvFile(e.target.files[0])}
                />
                <label htmlFor="cv-upload" className={`border-2 border-dashed rounded-3xl p-10 text-center flex flex-col items-center justify-center cursor-pointer transition-all ${cvFile ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50/50 hover:bg-blue-50'}`}>
-                  {cvFile ? (
-                      <>
-                        <CheckCircle className="text-green-500 mb-3" size={36}/>
-                        <p className="font-bold text-green-700">{cvFile.name}</p>
-                      </>
-                  ) : (
-                      <>
-                        <Upload className="text-gray-400 mb-3 group-hover:text-blue-500" size={36}/>
-                        <p className="font-bold text-gray-500 group-hover:text-blue-600">
-                           {user?.cvUrl ? "CV Link (Google Drive)" : "Upload CV (Optional)"}
-                        </p>
-                      </>
-                  )}
+                 {cvFile ? (
+                     <>
+                       <CheckCircle className="text-green-500 mb-3" size={36}/>
+                       <p className="font-bold text-green-700">{cvFile.name}</p>
+                     </>
+                 ) : (
+                     <>
+                       <Upload className="text-gray-400 mb-3 group-hover:text-blue-500" size={36}/>
+                       <p className="font-bold text-gray-500 group-hover:text-blue-600">
+                          {user?.cvUrl ? "CV Link (Google Drive)" : "Upload CV (Optional)"}
+                       </p>
+                     </>
+                 )}
                </label>
            </div>
 
@@ -1166,9 +1140,9 @@ function Footer({ setView }) {
            <div className="flex items-center gap-2 text-3xl font-black">EgyptHire <div className="bg-blue-600 p-1.5 rounded-lg text-white shadow-sm shadow-blue-200"><Briefcase size={22}/></div></div>
            <p className="text-gray-400 text-sm font-medium">We connect talents with top companies.</p>
            <div className="flex gap-4 text-gray-400">
-              {[Globe, Instagram, Linkedin].map((Icon, i) => (
+             {[Globe, Instagram, Linkedin].map((Icon, i) => (
                 <motion.div key={i} whileHover={{ y:-5, color: "#2563eb" }} className="cursor-pointer transition-colors"><Icon size={22}/></motion.div>
-              ))}
+             ))}
            </div>
            <div className="flex gap-6 text-[10px] text-gray-300 uppercase tracking-widest pt-4">
               <button onClick={() => setView("home")} className="hover:text-blue-600 transition-colors">Home</button>
