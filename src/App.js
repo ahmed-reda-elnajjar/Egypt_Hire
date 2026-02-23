@@ -996,8 +996,8 @@ const handleApply = async (e) => {
       sheetData.append('audioUrl', publicAudioUrl);
 
       // 1. إرسال البيانات لجوجل شيت بدون انتظار
-     await fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' });
-
+     // ابحث عن هذا السطر وتأكد أنه يستخدم scriptUrl وليس رابطاً يدوياً قديمًا
+await fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' });
       // 2. إظهار رسالة النجاح فوراً للمستخدم
       setSuccess(true);
       setLoading(false);
