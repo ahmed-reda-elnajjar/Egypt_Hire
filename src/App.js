@@ -355,7 +355,7 @@ function HomeView({ setView, onFastApply }) {
         <motion.button 
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={onFastApply}
+          onClick={handleFastApply}
           className="bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-bold text-xl border border-gray-100 shadow-sm flex items-center gap-3"
         >
           Fast Apply <Zap size={22} className="text-orange-400 fill-orange-400"/>
@@ -375,8 +375,6 @@ function LoginView({ onLogin, availableLanguages }) {
   const [formData, setFormData] = useState({ name: "", email: "", phone: "", language: "", experience: "", cvUrl: "" });
   const [cvFile, setCvFile] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  const scriptUrl = "https://script.google.com/macros/s/AKfycbyFMRbyZSjyp8pXTymYBm2zhw_uoEhbXUEvm4CbxE7o9Fxs2Nf-3aovgry-Qa-DDHf8/exec";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -481,7 +479,7 @@ function JobsListView({ jobs, filters, setFilters, onViewDetails, hideFilters = 
       {!hideFilters && (
         <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center justify-between">
            <div className="flex gap-4 items-center flex-1">
-              
+             
               <select 
                 value={filters.language}
                 onChange={(e) => setFilters(p => ({...p, language: e.target.value}))} 
@@ -894,11 +892,10 @@ function ApplicationPage({ job, onBack, user }) {
   const timerRef = React.useRef(null); 
   const [cvFile, setCvFile] = useState(null);
 
-  // تمت إضافة العمر هنا
   const [formData, setFormData] = useState({
     name: user?.name || "", 
     phone: user?.phone || "", 
-    age: "", // <-- حقل العمر الجديد
+    age: "", 
     gender: "", 
     status: "", 
     experience: user?.experience || ""
@@ -944,7 +941,8 @@ function ApplicationPage({ job, onBack, user }) {
   };
 
   const stopRecording = () => { if(mediaRecorder.current) mediaRecorder.current.stop(); setIsRecording(false); };
-const handleApply = async (e) => {
+  
+  const handleApply = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.phone || !formData.age || !formData.gender || !formData.status || !formData.experience || !audioUrl) {
       alert("Missing Data / تأكد من إدخال جميع البيانات بما فيها العمر والصوت");
@@ -996,13 +994,13 @@ const handleApply = async (e) => {
       sheetData.append('audioUrl', publicAudioUrl);
 
       // 1. إرسال البيانات لجوجل شيت بدون انتظار
-     // ابحث عن هذا السطر وتأكد أنه يستخدم scriptUrl وليس رابطاً يدوياً قديمًا
-await fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' });
+      fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' }).catch(e => console.error(e));
+      
       // 2. إظهار رسالة النجاح فوراً للمستخدم
       setSuccess(true);
       setLoading(false);
 
-      // 3. محاولة الإرسال لفايربيس في الخلفية (إذا كان متوقفاً فلن يعطل الشاشة)
+      // 3. محاولة الإرسال لفايربيس في الخلفية 
       addDoc(collection(db, "applications"), {
         ...formData,
         jobTitle: job.title,
@@ -1048,7 +1046,6 @@ await fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' });
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
              <ApplySelect label="Experience" icon={<Briefcase size={20}/>} value={formData.experience} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} />
-             {/* حقل العمر الجديد في التصميم */}
              <ApplyField label="Age" icon={<Calendar size={20}/>} placeholder="e.g. 25" value={formData.age} type="number" onChange={v => setFormData({...formData, age: v})}/>
            </div>
 
@@ -1124,7 +1121,6 @@ function DetailStat({ icon, title, value }) {
   </div>;
 }
 
-// تم إضافة نوع الإدخال (type) لدعم الأرقام في حقل العمر
 function ApplyField({ label, icon, placeholder, onChange, value, type = "text" }) {
   return (
     <div className="space-y-2 text-left">
@@ -1151,6 +1147,7 @@ function ApplySelect({ label, icon, options, onChange, value }) {
     </div>
   );
 }
+
 function AdminField({ label, placeholder, value, onChange }) {
   return (
     <div className="space-y-2 text-left">
@@ -1182,9 +1179,9 @@ function Footer({ setView }) {
            </div>
            <p className="text-gray-400 text-sm font-medium">By order of the Peaky Scouts, we find the best jobs.</p>
            <div className="flex gap-4 text-gray-400">
-              {[Globe, Instagram, Linkedin].map((Icon, i) => (
+             {[Globe, Instagram, Linkedin].map((Icon, i) => (
                 <motion.div key={i} whileHover={{ y:-5, color: "#9333ea" }} className="cursor-pointer transition-colors"><Icon size={22}/></motion.div>
-              ))}
+             ))}
            </div>
            <div className="flex gap-6 text-[10px] text-gray-300 uppercase tracking-widest pt-4">
               <button onClick={() => setView("home")} className="hover:text-purple-600 transition-colors">Home</button>
