@@ -24,13 +24,13 @@ const UPLOAD_PRESET = "w1cmaa5s";
 
 // --- الإعدادات اللونية المطلوبة ---
 const themeColors = {
-  mainBg: "rgb(250, 227, 255)", // خلفية الصفحة الكاملة
-  glassBg: "rgba(255, 255, 255, 0.39)", // للفوتر والناف بار
-  glassCardBg: "rgba(255, 255, 255, 0.47)", // للخانات وكروت الوظائف
-  glassFormBg: "rgba(255, 255, 255, 0.51)", // الدرجة الجديدة لكارت التفاصيل ونموذج التقديم
+  mainBg: "rgb(250, 227, 255)", 
+  glassBg: "rgba(255, 255, 255, 0.39)", 
+  glassCardBg: "rgba(255, 255, 255, 0.47)", 
+  glassFormBg: "rgba(255, 255, 255, 0.51)", 
   accentPurple: "#5E1181", 
   accentPink: "#E4405F",
-  applyBtn: "rgb(0, 90, 238)" // لون زر التقديم الأزرق الغامق
+  applyBtn: "rgb(0, 90, 238)" 
 };
 
 function FeatureCard({ icon, title, desc }) {
@@ -601,7 +601,7 @@ function JobDetailsView({ job, onBack, onApply }) {
                 whileTap={{ scale: 0.95 }}
                 onClick={onApply} 
                 className="w-full text-white py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 mt-10 hover:opacity-90 transition-colors"
-                style={{ backgroundColor: themeColors.applyBtn }} // تم تطبيق اللون الأزرق هنا
+                style={{ backgroundColor: themeColors.applyBtn }} 
               >
                 <Send size={20} className="-mt-1"/> Apply Now
               </motion.button>
@@ -642,10 +642,24 @@ function JobDetailsView({ job, onBack, onApply }) {
 }
 
 function AdminPanelView({ jobs, onViewJob }) {
-  const [isAuth, setIsAuth] = useState(false);
+  // 1. الدخول الأساسي: بوابة الأمان الأولى
+  const [isAuth, setIsAuth] = useState(false); 
   const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [activeTab, setActiveTab] = useState("jobs");
+  
+  // 2. حالة للتحكم في الخانات (التبويبات) اللي اتفتحت بعد الباسورد الداخلي
+  // recruiter_apps مفتوحة من البداية لأنها لا تحتاج باسورد داخلي حسب طلبك
+  const [unlockedTabs, setUnlockedTabs] = useState(["recruiter_apps"]); 
+  const [activeTab, setActiveTab] = useState(null); // تبدأ بدون تحديد خانة لعرض رسالة ترحيب
+  
+  // 3. حالة لشاشة الباسورد الداخلي
+  const [pendingTab, setPendingTab] = useState(null);
+  const [secPass, setSecPass] = useState("");
+  const [showSecPass, setShowSecPass] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [hideRecruiterApps, setHideRecruiterApps] = useState(false);
+
   const [applications, setApplications] = useState([]);
   const [users, setUsers] = useState([]); 
   
@@ -653,22 +667,26 @@ function AdminPanelView({ jobs, onViewJob }) {
   const [form, setForm] = useState({ title: "", company: "", location: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "" });
   const [loading, setLoading] = useState(false);
 
+  // جلب البيانات دائماً لكي تظهر العدادات على الخانات
   useEffect(() => {
-    if (isAuth && activeTab === "applications") {
-      const q = query(collection(db, "applications"), orderBy("appliedAt", "desc"));
-      const unsub = onSnapshot(q, (snapshot) => {
+    if (isAuth) {
+      const qApps = query(collection(db, "applications"), orderBy("appliedAt", "desc"));
+      const unsubApps = onSnapshot(qApps, (snapshot) => {
         setApplications(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       });
-      return () => unsub();
-    }
-    if (isAuth && activeTab === "users") {
-      const q = query(collection(db, "users"), orderBy("joinedAt", "desc"));
-      const unsub = onSnapshot(q, (snapshot) => {
+      
+      const qUsers = query(collection(db, "users"), orderBy("joinedAt", "desc"));
+      const unsubUsers = onSnapshot(qUsers, (snapshot) => {
         setUsers(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       });
-      return () => unsub();
+      
+      return () => { unsubApps(); unsubUsers(); };
     }
-  }, [isAuth, activeTab]);
+  }, [isAuth]);
+
+  useEffect(() => {
+    setSearchQuery("");
+  }, [activeTab]);
 
   const handleRateEnglish = async (appId, level) => {
     try {
@@ -676,6 +694,15 @@ function AdminPanelView({ jobs, onViewJob }) {
       await updateDoc(appRef, { englishLevel: level });
     } catch (err) {
       alert("Error updating level: " + err.message);
+    }
+  };
+
+  const handleAppStatus = async (appId, newStatus) => {
+    try {
+      const appRef = doc(db, "applications", appId);
+      await updateDoc(appRef, { status: newStatus });
+    } catch (err) {
+      alert("Error updating status: " + err.message);
     }
   };
 
@@ -694,35 +721,162 @@ function AdminPanelView({ jobs, onViewJob }) {
     setLoading(false);
   };
 
+  // --- دالة التحكم في التبويبات وطلب الباسورد الثاني ---
+  const handleTabClick = (tabName) => {
+    if (unlockedTabs.includes(tabName)) {
+      setActiveTab(tabName);
+      setPendingTab(null);
+    } else {
+      setPendingTab(tabName);
+      setSecPass(""); // تصفير الباسورد القديم
+    }
+  };
+
+  // --- دالة التأكد من الباسورد الداخلي للتبويبات ---
+  const handleUnlockTab = () => {
+    if (secPass === "scoutech") {
+      // الماستر باسورد بيفتح أي خانة
+      setUnlockedTabs(prev => [...prev, pendingTab]);
+      setActiveTab(pendingTab);
+      setPendingTab(null);
+      setSecPass("");
+    } else if (pendingTab === "jobs" && secPass === "samaltman") {
+      // باسورد سامالتمان يفتح الوظائف بس
+      setUnlockedTabs(prev => [...prev, "jobs"]);
+      setActiveTab(pendingTab);
+      setPendingTab(null);
+      setSecPass("");
+    } else if ((pendingTab === "applications" || pendingTab === "users") && secPass === "rayan") {
+      // باسورد رايان يفتح التطبيقات والمستخدمين مع بعض
+      setUnlockedTabs(prev => [...prev, "applications", "users"]);
+      setActiveTab(pendingTab);
+      setPendingTab(null);
+      setSecPass("");
+    } else {
+      alert("Wrong Password");
+    }
+  };
+
+  // --- 1. شاشة تسجيل الدخول الأولى (البوابة الرئيسية) ---
   if (!isAuth) return (
     <div className="flex justify-center items-center py-20 px-4">
       <div className="p-10 md:p-12 rounded-[3rem] shadow-2xl border border-white/40 w-full max-w-md text-center backdrop-blur-md" style={{ backgroundColor: themeColors.glassCardBg }}>
         <Lock className="mx-auto mb-6 text-gray-400" size={48}/>
         <h2 className="text-2xl font-bold mb-8" style={{ color: themeColors.accentPurple }}>Admin Login</h2>
         <div className="relative mb-6">
-           <input type={showPass ? "text" : "password"} onChange={(e)=>setPass(e.target.value)} className="w-full bg-white/50 p-5 rounded-2xl text-center font-bold outline-none border border-transparent focus:border-purple-300 transition-all shadow-sm" placeholder="******"/>
+           <input 
+             type={showPass ? "text" : "password"} 
+             onChange={(e)=>setPass(e.target.value)} 
+             onKeyDown={(e) => e.key === 'Enter' && (pass === "scoutech" ? setIsAuth(true) : alert("Wrong Password"))}
+             className="w-full bg-white/50 p-5 rounded-2xl text-center font-bold outline-none border border-transparent focus:border-purple-300 transition-all shadow-sm" 
+             placeholder="******"
+           />
            <button onClick={()=>setShowPass(!showPass)} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">{showPass ? <EyeOff size={22}/> : <Eye size={22}/>}</button>
         </div>
-        <button onClick={() => pass === "negrootech" ? setIsAuth(true) : alert("Wrong Password")} className="w-full text-white py-5 rounded-2xl font-bold shadow-xl hover:opacity-90" style={{ backgroundColor: themeColors.accentPurple }}>Login</button>
+        <button 
+           onClick={() => {
+             if (pass === "scoutech") {
+                setIsAuth(true);
+             } else {
+                alert("Wrong Password");
+             }
+           }} 
+           className="w-full text-white py-5 rounded-2xl font-bold shadow-xl hover:opacity-90" 
+           style={{ backgroundColor: themeColors.accentPurple }}
+        >
+          Login
+        </button>
       </div>
     </div>
   );
 
+  // --- 2. لوحة التحكم الداخلية بعد الدخول ---
   return (
     <div className="py-10 space-y-10">
-      <div className="flex flex-col md:flex-row justify-center gap-4 mb-10 px-4">
-        <button onClick={() => setActiveTab("jobs")} className={`px-8 py-4 rounded-2xl font-bold transition-all shadow-md ${activeTab === "jobs" ? "text-white" : "bg-white/50 text-gray-600 hover:bg-white/80"}`} style={{ backgroundColor: activeTab === "jobs" ? themeColors.accentPurple : "" }}>
+      
+      {/* شريط الخانات (التبويبات) */}
+      <div className="flex flex-col md:flex-row justify-center gap-4 mb-10 px-4 flex-wrap">
+        <button 
+           onClick={() => handleTabClick("jobs")} 
+           className={`px-8 py-4 rounded-2xl font-bold transition-all shadow-md ${activeTab === "jobs" && !pendingTab ? "text-white" : "bg-white/50 text-gray-600 hover:bg-white/80"}`} 
+           style={{ backgroundColor: activeTab === "jobs" && !pendingTab ? themeColors.accentPurple : "" }}
+        >
            Manage Jobs
         </button>
-        <button onClick={() => setActiveTab("applications")} className={`px-8 py-4 rounded-2xl font-bold transition-all shadow-md ${activeTab === "applications" ? "text-white" : "bg-white/50 text-gray-600 hover:bg-white/80"}`} style={{ backgroundColor: activeTab === "applications" ? themeColors.accentPurple : "" }}>
+        
+        <button 
+           onClick={() => handleTabClick("applications")} 
+           className={`px-8 py-4 rounded-2xl font-bold transition-all shadow-md ${activeTab === "applications" || pendingTab === "applications" ? "text-white" : "bg-white/50 text-gray-600 hover:bg-white/80"}`} 
+           style={{ backgroundColor: activeTab === "applications" || pendingTab === "applications" ? themeColors.accentPurple : "" }}
+        >
            Applications ({applications.length})
         </button>
-        <button onClick={() => setActiveTab("users")} className={`px-8 py-4 rounded-2xl font-bold transition-all shadow-md ${activeTab === "users" ? "text-white" : "bg-white/50 text-gray-600 hover:bg-white/80"}`} style={{ backgroundColor: activeTab === "users" ? themeColors.accentPurple : "" }}>
+        
+        <button 
+           onClick={() => handleTabClick("recruiter_apps")} 
+           className={`px-8 py-4 rounded-2xl font-bold transition-all shadow-md ${activeTab === "recruiter_apps" && !pendingTab ? "text-white" : "bg-white/50 text-gray-600 hover:bg-white/80"}`} 
+           style={{ backgroundColor: activeTab === "recruiter_apps" && !pendingTab ? themeColors.accentPurple : "" }}
+        >
+           Recruiter Apps ({applications.filter(a => a.hrRecruiterName && a.hrRecruiterName.trim() !== "").length})
+        </button>
+
+        <button 
+           onClick={() => handleTabClick("users")} 
+           className={`px-8 py-4 rounded-2xl font-bold transition-all shadow-md ${activeTab === "users" || pendingTab === "users" ? "text-white" : "bg-white/50 text-gray-600 hover:bg-white/80"}`} 
+           style={{ backgroundColor: activeTab === "users" || pendingTab === "users" ? themeColors.accentPurple : "" }}
+        >
            Users ({users.length})
         </button>
       </div>
 
-      {activeTab === "jobs" && (
+      {/* --- شاشة الباسورد الداخلية الأنيقة --- */}
+      {pendingTab && (
+        <div className="flex justify-center items-center py-10 px-4 animate-in zoom-in duration-300">
+          <div className="p-10 md:p-12 rounded-[3rem] shadow-2xl border border-white/40 w-full max-w-md text-center backdrop-blur-md" style={{ backgroundColor: themeColors.glassCardBg }}>
+            <Lock className="mx-auto mb-6 text-gray-400" size={48}/>
+            <h2 className="text-2xl font-bold mb-2" style={{ color: themeColors.accentPurple }}>Secure Section</h2>
+            <p className="text-gray-500 mb-8 font-bold">
+               Password required to open {
+                  pendingTab === "jobs" ? "Manage Jobs" : 
+                  pendingTab === "applications" ? "Applications" : 
+                  "Users"
+               }
+            </p>
+            
+            <div className="relative mb-6">
+               <input 
+                 type={showSecPass ? "text" : "password"} 
+                 value={secPass}
+                 onChange={(e)=>setSecPass(e.target.value)} 
+                 onKeyDown={(e) => e.key === 'Enter' && handleUnlockTab()}
+                 className="w-full bg-white/50 p-5 rounded-2xl text-center font-bold outline-none border border-transparent focus:border-purple-300 transition-all shadow-sm" 
+                 placeholder="******"
+               />
+               <button onClick={()=>setShowSecPass(!showSecPass)} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">{showSecPass ? <EyeOff size={22}/> : <Eye size={22}/>}</button>
+            </div>
+            
+            <button 
+               onClick={handleUnlockTab} 
+               className="w-full text-white py-5 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-all" 
+               style={{ backgroundColor: themeColors.accentPurple }}
+            >
+               Unlock
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* رسالة ترحيبية لو لم يتم اختيار أي خانة بعد الدخول */}
+      {!pendingTab && activeTab === null && (
+        <div className="text-center py-20 animate-in fade-in">
+           <Lock className="mx-auto mb-6 text-gray-400" size={60}/>
+           <h2 className="text-2xl font-bold mb-4" style={{ color: themeColors.accentPurple }}>Welcome to Admin Dashboard</h2>
+           <p className="text-gray-500 font-bold">Please select a tab from above to continue.</p>
+        </div>
+      )}
+
+      {/* --- محتوى الخانات --- */}
+      {!pendingTab && activeTab === "jobs" && (
         <div className="space-y-16 animate-in fade-in px-4 text-left">
           <div className="max-w-2xl mx-auto p-8 md:p-12 rounded-[3.5rem] shadow-2xl border border-white/40 backdrop-blur-md" style={{ backgroundColor: themeColors.glassCardBg }}>
             <h2 className="text-3xl font-black mb-10 flex items-center justify-center gap-3" style={{ color: themeColors.accentPurple }}>
@@ -765,107 +919,199 @@ function AdminPanelView({ jobs, onViewJob }) {
         </div>
       )}
 
-      {activeTab === "applications" && (
+      {!pendingTab && (activeTab === "applications" || activeTab === "recruiter_apps") && (
         <div className="max-w-6xl mx-auto animate-in fade-in px-4 text-left">
-          {applications.length === 0 ? (
-            <div className="text-center text-gray-500 font-bold py-20">No data found.</div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6">
-               {applications.map(app => (
-                 <div key={app.id} className="p-8 rounded-[2.5rem] shadow-sm border border-white/40 relative group hover:shadow-xl transition-all backdrop-blur-md" style={{ backgroundColor: themeColors.glassCardBg }}>
-                    <div className="absolute top-8 right-8">
-                       {app.englishLevel ? (
-                         <span className={`px-4 py-2 rounded-xl text-white font-bold text-sm shadow-md ${
-                           ["C1", "C2"].includes(app.englishLevel) ? "bg-green-500" :
-                           ["B1", "B2"].includes(app.englishLevel) ? "bg-purple-500" : "bg-orange-500"
-                         }`}>
-                           Level: {app.englishLevel}
-                         </span>
-                       ) : (
-                         <span className="px-4 py-2 rounded-xl bg-white/50 text-gray-500 font-bold text-sm">Not Rated</span>
-                       )}
-                    </div>
-
-                    <div className="absolute top-8 left-8">
-                       <span className="bg-purple-100 text-purple-800 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">{app.status || "New"}</span>
-                    </div>
-                    
-                    <div className="flex flex-col md:flex-row md:items-center gap-8 mt-8">
-                       
-                       <div 
-                          onClick={() => onViewJob(app.jobId)}
-                          className="flex items-center gap-4 cursor-pointer hover:bg-white/50 p-2 rounded-3xl transition-all group/profile"
-                       >
-                           <div className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-2xl transition-colors shadow-md" style={{ backgroundColor: themeColors.accentPurple }}>
-                              {app.name.charAt(0)}
-                           </div>
-                           <div>
-                              <h3 className="text-2xl font-black transition-colors underline-offset-4 group-hover/profile:underline" style={{ color: themeColors.accentPurple }}>
-                                {app.name}
-                              </h3>
-                              <p className="text-sm font-bold mt-1 flex items-center gap-1" style={{ color: themeColors.accentPink }}>
-                                 {app.jobTitle} <ExternalLink size={14} className="mb-0.5"/>
-                              </p>
-                           </div>
-                       </div>
-
-                       <div className="flex-1 space-y-2 mx-4">
-                          <p className="text-gray-600 font-bold flex items-center gap-2"><Phone size={16}/> {app.phone}</p>
-                          <div className="flex gap-4 mt-2 text-sm text-gray-500 flex-wrap">
-                              {app.age && <span>Age: {app.age}</span>}
-                              {app.age && <span>•</span>}
-                              <span>Exp: {app.experience}</span>
-                              <span>•</span>
-                              <span>Gender: {app.gender}</span>
-                          </div>
-                       </div>
-                       
-                       <div className="w-full md:w-1/3 flex flex-col gap-4">
-                            <div className="bg-white/50 p-4 rounded-3xl flex flex-col items-center gap-2 shadow-sm">
-                                <span className="text-xs font-bold text-gray-500 uppercase">Audio Assessment</span>
-                                {app.audioUrl ? (
-                                    <>
-                                      <audio controls src={app.audioUrl} className="w-full h-10" />
-                                      <div className="w-full flex items-center gap-2 mt-2">
-                                        <Languages size={16} className="text-gray-500"/>
-                                        <select 
-                                          className="w-full bg-white/80 p-2 rounded-xl text-sm font-bold text-gray-700 border border-transparent outline-none cursor-pointer focus:border-purple-400 transition-all shadow-sm"
-                                          value={app.englishLevel || ""}
-                                          onChange={(e) => handleRateEnglish(app.id, e.target.value)}
-                                        >
-                                          <option value="" disabled>Rate English Level...</option>
-                                          <option value="A1">A1 (Beginner)</option>
-                                          <option value="A2">A2 (Elementary)</option>
-                                          <option value="B1">B1 (Intermediate)</option>
-                                          <option value="B2">B2 (Upper Interm.)</option>
-                                          <option value="C1">C1 (Advanced)</option>
-                                          <option value="C2">C2 (Fluent)</option>
-                                        </select>
-                                      </div>
-                                    </>
-                                ) : (
-                                    <span className="text-red-500 text-xs font-bold">No Audio</span>
-                                )}
-                            </div>
-                            {app.cvUrl && (
-                                <a href={app.cvUrl} target="_blank" rel="noreferrer" className="text-white p-3 rounded-2xl flex items-center justify-center gap-2 font-bold hover:opacity-90 transition-colors shadow-md" style={{ backgroundColor: themeColors.accentPurple }}>
-                                    <Download size={18}/> View CV
-                                </a>
-                            )}
-                       </div>
-                       
-                       <button onClick={async () => window.confirm("Are you sure?") && await deleteDoc(doc(db, "applications", app.id))} className="text-red-400 hover:text-red-600 transition-colors">
-                          <Trash2 size={24} />
-                       </button>
-                    </div>
-                 </div>
-               ))}
+          
+          {activeTab === "recruiter_apps" && (
+            <div className="mb-8 relative max-w-2xl mx-auto">
+               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><Search size={22}/></div>
+               <input 
+                 type="text" 
+                 placeholder="Search by Recruiter Name or Phone Number..." 
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 className="w-full bg-white/60 p-4 pl-12 rounded-2xl font-bold outline-none border border-white/40 shadow-sm focus:border-purple-400 transition-all text-gray-700 backdrop-blur-md"
+               />
             </div>
           )}
+
+          {activeTab === "applications" && (
+            <div className="mb-6 flex justify-end">
+               <button 
+                 onClick={() => setHideRecruiterApps(!hideRecruiterApps)}
+                 className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm ${hideRecruiterApps ? 'bg-white/80 text-purple-700 border border-purple-200' : 'bg-white/50 text-gray-600 hover:bg-white/80 border border-transparent'}`}
+                 style={{ backgroundColor: hideRecruiterApps ? themeColors.glassFormBg : "" }}
+               >
+                 {hideRecruiterApps ? <EyeOff size={18} /> : <Eye size={18} />}
+                 {hideRecruiterApps ? "Show Recruiter Apps" : "Hide Recruiter Apps"}
+               </button>
+            </div>
+          )}
+
+          {(() => {
+             let displayedApps = applications;
+
+             if (activeTab === "recruiter_apps") {
+                displayedApps = applications.filter(app => app.hrRecruiterName && app.hrRecruiterName.trim() !== "");
+                
+                if (searchQuery.trim() !== "") {
+                   const query = searchQuery.toLowerCase();
+                   displayedApps = displayedApps.filter(app => 
+                     (app.hrRecruiterName && app.hrRecruiterName.toLowerCase().includes(query)) ||
+                     (app.phone && app.phone.includes(query))
+                   );
+                }
+             } else if (activeTab === "applications") {
+                if (hideRecruiterApps) {
+                   displayedApps = applications.filter(app => !app.hrRecruiterName || app.hrRecruiterName.trim() === "");
+                }
+             }
+             
+             if (displayedApps.length === 0) {
+               return <div className="text-center text-gray-500 font-bold py-20">No matching applications found.</div>;
+             }
+             
+             return (
+               <div className="grid grid-cols-1 gap-6">
+                  {displayedApps.map(app => (
+                    <div key={app.id} className="p-8 rounded-[2.5rem] shadow-sm border border-white/40 relative group hover:shadow-xl transition-all backdrop-blur-md" style={{ backgroundColor: themeColors.glassCardBg }}>
+                       <div className="absolute top-8 right-8">
+                          {app.englishLevel ? (
+                            <span className={`px-4 py-2 rounded-xl text-white font-bold text-sm shadow-md ${
+                              ["C1", "C2"].includes(app.englishLevel) ? "bg-green-500" :
+                              ["B1", "B2"].includes(app.englishLevel) ? "bg-purple-500" : "bg-orange-500"
+                            }`}>
+                              Level: {app.englishLevel}
+                            </span>
+                          ) : (
+                            <span className="px-4 py-2 rounded-xl bg-white/50 text-gray-500 font-bold text-sm">Not Rated</span>
+                          )}
+                       </div>
+
+                       <div className="absolute top-8 left-8">
+                          <span className={`px-4 py-1.5 rounded-full text-xs font-bold shadow-sm ${
+                             app.status === 'Accepted' ? 'bg-green-100 text-green-700' :
+                             app.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                             'bg-purple-100 text-purple-800'
+                          }`}>
+                             {app.status || "New"}
+                          </span>
+                       </div>
+                       
+                       <div className="flex flex-col md:flex-row md:items-center gap-8 mt-8">
+                          
+                          <div 
+                             onClick={() => onViewJob(app.jobId)}
+                             className="flex items-center gap-4 cursor-pointer hover:bg-white/50 p-2 rounded-3xl transition-all group/profile"
+                          >
+                              <div className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-2xl transition-colors shadow-md" style={{ backgroundColor: themeColors.accentPurple }}>
+                                 {app.name.charAt(0)}
+                              </div>
+                              <div>
+                                 <h3 className="text-2xl font-black transition-colors underline-offset-4 group-hover/profile:underline" style={{ color: themeColors.accentPurple }}>
+                                   {app.name}
+                                 </h3>
+                                 <p className="text-sm font-bold mt-1 flex items-center gap-1" style={{ color: themeColors.accentPink }}>
+                                    {app.jobTitle} <ExternalLink size={14} className="mb-0.5"/>
+                                 </p>
+                              </div>
+                          </div>
+
+                          <div className="flex-1 space-y-2 mx-4">
+                             <p className="text-gray-600 font-bold flex items-center gap-2"><Phone size={16}/> {app.phone}</p>
+                             <div className="flex gap-4 mt-2 text-sm text-gray-500 flex-wrap">
+                                 {app.age && <span>Age: {app.age}</span>}
+                                 {app.age && <span>•</span>}
+                                 <span>Exp: {app.experience}</span>
+                                 <span>•</span>
+                                 <span>Gender: {app.gender}</span>
+                             </div>
+                             {app.hrRecruiterName && (
+                                <div className="mt-2 text-sm font-bold flex items-center gap-1" style={{ color: themeColors.accentPink }}>
+                                   <User size={14}/> Recruiter: {app.hrRecruiterName}
+                                </div>
+                             )}
+                          </div>
+                          
+                          <div className="w-full md:w-1/3 flex flex-col gap-4">
+                               <div className="bg-white/50 p-4 rounded-3xl flex flex-col items-center gap-2 shadow-sm">
+                                   <span className="text-xs font-bold text-gray-500 uppercase">Evaluation</span>
+                                   {app.audioUrl ? (
+                                       <>
+                                         <audio controls src={app.audioUrl} className="w-full h-10" />
+                                         <div className="w-full flex items-center gap-2 mt-2">
+                                           <Languages size={16} className="text-gray-500"/>
+                                           <select 
+                                             disabled={activeTab === "recruiter_apps"}
+                                             className={`w-full p-2 rounded-xl text-sm font-bold border border-transparent outline-none transition-all shadow-sm ${
+                                               activeTab === "recruiter_apps" 
+                                               ? "bg-white/50 text-gray-500 cursor-not-allowed" 
+                                               : "bg-white/80 text-gray-700 cursor-pointer focus:border-purple-400"
+                                             }`}
+                                             value={app.englishLevel || ""}
+                                             onChange={(e) => handleRateEnglish(app.id, e.target.value)}
+                                           >
+                                             <option value="" disabled>Rate English Level...</option>
+                                             <option value="A1">A1 (Beginner)</option>
+                                             <option value="A2">A2 (Elementary)</option>
+                                             <option value="B1">B1 (Intermediate)</option>
+                                             <option value="B2">B2 (Upper Interm.)</option>
+                                             <option value="C1">C1 (Advanced)</option>
+                                             <option value="C2">C2 (Fluent)</option>
+                                           </select>
+                                         </div>
+                                       </>
+                                   ) : (
+                                       <span className="text-red-500 text-xs font-bold mb-2">No Audio</span>
+                                   )}
+                                   
+                                   <div className="w-full flex items-center gap-2 mt-1">
+                                     <CheckCircle size={16} className={
+                                        app.status === 'Accepted' ? 'text-green-500' :
+                                        app.status === 'Rejected' ? 'text-red-500' : 'text-gray-500'
+                                     }/>
+                                     <select 
+                                       disabled={activeTab === "recruiter_apps"}
+                                       className={`w-full p-2 rounded-xl text-sm font-bold border border-transparent outline-none transition-all shadow-sm ${
+                                         activeTab === "recruiter_apps" ? "cursor-not-allowed opacity-70" : "cursor-pointer focus:border-purple-400"
+                                       } ${
+                                         app.status === 'Accepted' ? 'bg-green-100 text-green-700' :
+                                         app.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                         'bg-white/80 text-gray-700'
+                                       }`}
+                                       value={app.status || "New"}
+                                       onChange={(e) => handleAppStatus(app.id, e.target.value)}
+                                     >
+                                       <option value="New">Status: New</option>
+                                       <option value="Accepted">Accepted</option>
+                                       <option value="Rejected">Rejected</option>
+                                     </select>
+                                   </div>
+
+                               </div>
+                               {app.cvUrl && (
+                                   <a href={app.cvUrl} target="_blank" rel="noreferrer" className="text-white p-3 rounded-2xl flex items-center justify-center gap-2 font-bold hover:opacity-90 transition-colors shadow-md" style={{ backgroundColor: themeColors.accentPurple }}>
+                                       <Download size={18}/> View CV
+                                   </a>
+                               )}
+                          </div>
+                          
+                          {activeTab === "applications" && (
+                            <button onClick={async () => window.confirm("Are you sure?") && await deleteDoc(doc(db, "applications", app.id))} className="text-red-400 hover:text-red-600 transition-colors">
+                               <Trash2 size={24} />
+                            </button>
+                          )}
+
+                       </div>
+                    </div>
+                  ))}
+               </div>
+             );
+          })()}
         </div>
       )}
 
-      {activeTab === "users" && (
+      {!pendingTab && activeTab === "users" && (
         <div className="max-w-6xl mx-auto animate-in fade-in px-4 text-left">
           {users.length === 0 ? (
             <div className="text-center text-gray-500 font-bold py-20">No data found.</div>
@@ -1138,7 +1384,7 @@ function ApplicationPage({ job, onBack, user }) {
              type="submit" 
              disabled={loading} 
              className="w-full text-white py-5 rounded-[2rem] font-bold text-2xl flex justify-center items-center gap-3 shadow-xl hover:opacity-90 transition-all disabled:bg-gray-400 disabled:shadow-none"
-             style={{ backgroundColor: themeColors.applyBtn }} // تم تطبيق اللون الأزرق هنا
+             style={{ backgroundColor: themeColors.applyBtn }} 
            >
              {loading ? <Loader2 className="animate-spin"/> : <><Send size={28} className="-mt-1"/> Submit Application</>}
            </motion.button>
