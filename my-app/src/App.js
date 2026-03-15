@@ -392,11 +392,7 @@ function HomeView({ setView, onFastApply }) {
             <Zap size={18} className="text-[#FF6FA1] fill-[#FF6FA1]" />
           </motion.button>
 
-          {/* ===== غطاء Built with Spline ===== */}
-        
           
-          {/* Gradient من الأسفل */}
-          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0d0518] to-transparent z-10 pointer-events-none" />
         </div>
 
         {/* ===== الكلام والأزرار ===== */}
