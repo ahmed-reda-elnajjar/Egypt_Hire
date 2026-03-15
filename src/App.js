@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+
 // === التعديل هنا: استدعاء useScroll و useTransform للحركة الديناميكية ===
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { 
@@ -299,73 +300,171 @@ function UserProfileModal({ user, onClose, onLogout, onUpdate }) {
     </motion.div>
   );
 }
+// ===== السماعة اللي هتتحط فوق الروبوت =====
+
 function HomeView({ setView, onFastApply }) {
-  const { scrollY } = useScroll();
-  const yImage = useTransform(scrollY, [0, 500], [0, 100]); 
+  const isPlaying = React.useRef(false);
+  const hasPlayedOnce = React.useRef(false); // عشان نضمن إنه يشتغل مرة واحدة بس في الحياة
+
+  useEffect(() => {
+    const playAudio = () => {
+      // لو الصوت شغال حالياً، أو لو اشتغل قبل كده خلاص متعملش حاجة
+      if (isPlaying.current || hasPlayedOnce.current) return;
+
+      const audio = new Audio(process.env.PUBLIC_URL + "/welcome.mp3");
+      audio.volume = 0.7;
+
+      audio.onplay = () => {
+        isPlaying.current = true;
+        hasPlayedOnce.current = true; // سجل إنه خلاص اشتغل
+      };
+      
+      audio.onended = () => {
+        isPlaying.current = false;
+      };
+
+      audio.onerror = () => {
+        isPlaying.current = false;
+      };
+
+      audio.play().catch((e) => console.log("Audio blocked by browser", e));
+    };
+
+    // 1️⃣ لو ضغط على أي مكان في الصفحة العادية
+    const handleGlobalClick = () => playAudio();
+    window.addEventListener("click", handleGlobalClick);
+
+    // 2️⃣ الخدعة: لو ضغط جوه الـ iframe بتاع الروبوت
+    const handleIframeClick = () => {
+      setTimeout(() => {
+        if (document.activeElement && document.activeElement.tagName === "IFRAME") {
+          playAudio();
+        }
+      }, 0);
+    };
+    window.addEventListener("blur", handleIframeClick);
+
+    return () => {
+      window.removeEventListener("click", handleGlobalClick);
+      window.removeEventListener("blur", handleIframeClick);
+    };
+  }, []);
 
   return (
     <div className="space-y-16 text-center w-full">
-      {/* Container شفاف بدون إطارات سوداء داخلية */}
-      <div className="relative py-24 flex flex-col items-center justify-center min-h-[60vh] md:min-h-[75vh] overflow-hidden w-full px-4 rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-white/5 bg-transparent">
+
+      {/* ===== Hero Section ===== */}
+      <div
+        className="relative flex flex-col overflow-hidden w-screen shadow-2xl border-b border-white/5"
+        style={{
+          background: "rgba(10,5,20,0.3)",
+          backdropFilter: "blur(8px)",
+          marginLeft: "calc(-50vw + 50%)",
+          marginRight: "calc(-50vw + 50%)",
+          marginTop: "-2rem",
+        }}
+      >
+        {/* ===== الروبوت 3D ===== */}
+        <div
+          className="w-full h-[55vh] md:h-[70vh] relative z-0"
+          style={{ overflow: "hidden" }}
+        >
+          {/* iframe حر تماماً عشان يتفاعل مع الماوس */}
+          <iframe
+            src="https://my.spline.design/nexbotrobotcharacterconcept-sSaWP0eAxb1Ymk4UjUrJVSNp/"
+            frameBorder="0"
+            title="NEXBOT Robot"
+            className="w-full h-full relative z-0"
+            style={{ border: "none" }}
+          />
+
+          {/* ===== زر Fast Apply ===== */}
+          <motion.button
+            whileHover={{ scale: 1.08, boxShadow: "0 0 20px rgba(255,111,161,0.4)" }}
+            whileTap={{ scale: 0.95 }}
+            onClick={(e) => {
+              e.stopPropagation(); // عشان الزرار يعمل وظيفته
+              onFastApply();
+            }}
+            className="absolute bottom-3 right-3 z-30 bg-[#160a2b]/80 backdrop-blur-md text-white px-6 py-3 rounded-2xl font-bold shadow-xl flex items-center gap-2 border border-white/10"
+          >
+            Fast Apply
+            <Zap size={18} className="text-[#FF6FA1] fill-[#FF6FA1]" />
+          </motion.button>
+
+          {/* ===== غطاء Built with Spline ===== */}
         
-        {/* صورة الموبايل الطولية: تظهر بوضوح وبدون قص (contain) */}
-        <motion.img 
-          src={AVA} 
-          alt="Hero Mobile" 
-          className="absolute inset-0 w-full h-full object-contain md:hidden z-0 opacity-95 object-top" 
-          style={{ y: yImage }} 
-        />
+          
+          {/* Gradient من الأسفل */}
+          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0d0518] to-transparent z-10 pointer-events-none" />
+        </div>
 
-        {/* صورة الكمبيوتر العرضية: تتمدد لتملأ العرض (cover) مع رفعها للأعلى (top) لإظهار الرسومات */}
-        <motion.img 
-          src={avatar} 
-          alt="Hero Desktop" 
-          className="absolute inset-0 w-full h-full object-cover hidden md:block z-0 opacity-90 object-top" 
-          style={{ y: yImage }} 
-        />
-        
-        {/* طبقة لمعان خفيفة جداً بدلاً من التعتيم الأسود */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-transparent via-[rgba(26,11,46,0.1)] to-[#090511]/90"></div>
+        {/* ===== الكلام والأزرار ===== */}
+        <div className="relative z-20 w-full flex flex-col items-center text-center px-6 py-12 md:py-16">
 
-        <div className="relative z-20 max-w-4xl mx-auto w-full mt-10 md:mt-0">
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-            <div className="inline-block bg-white/5 border border-white/10 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-6 shadow-sm backdrop-blur-sm text-white">
-              Premium Recruitment Agency
-            </div>
-            <h1 className="text-5xl md:text-7xl font-black leading-tight text-white drop-shadow-[0_4px_15px_rgba(0,0,0,1)]">
-              Find your next <span style={{ color: themeColors.accentPurple }}>Call Center</span> Job in Egypt
-            </h1>
-          </motion.div>
-
-          <div className="flex flex-wrap justify-center gap-6 pt-12 relative z-10">
-            <motion.button 
+          <motion.div
+            className="flex flex-wrap justify-center gap-4 mb-10"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <motion.button
               whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(196,141,255,0.6)" }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setView("jobs")} 
+              onClick={() => setView("jobs")}
               className="text-gray-900 px-10 py-5 rounded-[2rem] font-bold text-xl flex items-center gap-3 transition-all"
               style={{ backgroundColor: themeColors.accentPurple }}
             >
-              Find Jobs <Search size={22}/>
+              Find Jobs <Search size={22} />
             </motion.button>
-            
-            <motion.button 
+
+            <motion.button
               whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.15)" }}
               whileTap={{ scale: 0.95 }}
               onClick={onFastApply}
               className="bg-black/20 backdrop-blur-md text-white px-10 py-5 rounded-[2rem] font-bold text-xl border border-white/20 shadow-xl flex items-center gap-3 transition-all"
             >
-              Fast Apply <Zap size={22} className="text-[#FF6FA1] fill-[#FF6FA1]"/>
+              Fast Apply
+              <Zap size={22} className="text-[#FF6FA1] fill-[#FF6FA1]" />
             </motion.button>
-          </div>
+          </motion.div>
+
+          <motion.h1
+            className="text-5xl md:text-7xl font-black leading-tight text-white drop-shadow-[0_4px_15px_rgba(0,0,0,1)] max-w-4xl"
+            
+          >
+            Find your next{" "}
+            <motion.span
+              style={{ color: themeColors.accentPurple }}
+              
+            >
+              Call Center
+            </motion.span>{" "}
+            Job in Egypt
+          </motion.h1>
         </div>
       </div>
 
-      {/* الكروت تظل خارج منطقة صورة الهيرو */}
+      {/* ===== Feature Cards ===== */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 px-4 relative z-20">
-         <FeatureCard icon={<Languages size={32}/>} title="Language Focus" desc="Jobs for English, German, & French speakers." />
-         <FeatureCard icon={<CheckCircle size={32}/>} title="Fast Hiring" desc="Get hired within 48 hours." />
-         <FeatureCard icon={<MapPin size={32}/>} title="Great Locations" desc="Maadi, Nasr City, New Cairo, & more." />
+        <FeatureCard
+          icon={<Languages size={32} />}
+          title="Language Focus"
+          desc="Jobs for English, German, & French speakers."
+        />
+        <FeatureCard
+          icon={<CheckCircle size={32} />}
+          title="Fast Hiring"
+          desc="Get hired within 48 hours."
+        />
+        <FeatureCard
+          icon={<MapPin size={32} />}
+          title="Great Locations"
+          desc="Maadi, Nasr City, New Cairo, & more."
+        />
       </div>
+
     </div>
   );
 }
@@ -1403,6 +1502,7 @@ function AdminField({ label, placeholder, value, onChange }) {
     </div>
   );
 }
+
 
 function Footer({ setView }) {
   return (
