@@ -1,40 +1,32 @@
 import React, { useEffect, useState } from "react";
 
-// === التعديل هنا: استدعاء useScroll و useTransform للحركة الديناميكية ===
+// === استدعاء المكاتب والأيقونات ===
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { 
   Languages, MapPin, Search, Briefcase, Zap, ArrowLeft, Send, Loader2,
   Globe, Instagram, Linkedin, Phone, Mail, DollarSign, Clock, Plus, Eye, EyeOff, Lock, 
   CheckCircle, Trash2, Edit3, User, Upload, LayoutGrid, Mic, StopCircle, GraduationCap, 
   Users, RotateCcw, ExternalLink, FileText, Download, LogIn, LogOut, X, Save, Calendar,
-  Facebook, Video 
+  Facebook, Video, ArrowUp, ArrowDown, Copy
 } from "lucide-react";
 
-// استدعاء اللوجو
+// استدعاء اللوجو والصور
 import logoImg from "./logo192.png";
-
-// === استدعاء صورة الخلفية من ملفات المشروع ===
 import avatar from "./avatar.png"; 
 import AVA from "./AVA.png";
-
-// استدعاء ملف الكورس الخارجي
 import EnglishCourse from "./EnglishCourse";
 
 // Firebase Config
 import { db, auth } from "./firebase"; 
-import { 
-  collection, onSnapshot, addDoc, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy 
-} from "firebase/firestore";
+import { collection, onSnapshot, addDoc, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
 
 // Cloudinary Config
 const CLOUD_NAME = "dvefx5ts8"; 
 const UPLOAD_PRESET = "w1cmaa5s"; 
 
-// === التعديل هنا: تحديث الألوان لتتناسب مع ألوان الصورة المستوحاة (اللون الوردي والأزرق الفضائي) ===
-// --- الإعدادات اللونية للوضع الليلي ---
+// الإعدادات اللونية 
 const themeColors = {
-  // التعديل هنا: مزيج متدرج من الألوان الفضائية (أسود، بنفسجي داكن، وأزرق غامق)
   mainBgGradient: "linear-gradient(135deg, #49307c 0%, #634b97 40%, #a786c1 70%, #ac9bcc 100%)",
   glassBg: "rgba(15, 10, 25, 0.35)", 
   glassCardBg: "rgba(10, 6, 16, 0.71)", 
@@ -42,6 +34,16 @@ const themeColors = {
   accentPurple: "#c184ff", 
   accentPink: "#FF6FA1", 
   applyBtn: "#1e7ede" 
+};
+
+// --- دالة مساعدة لتنسيق التاريخ والوقت ---
+const formatDateTime = (timestamp) => {
+  if (!timestamp) return "";
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  return date.toLocaleString('en-US', { 
+    day: '2-digit', month: 'short', year: 'numeric', 
+    hour: '2-digit', minute: '2-digit', hour12: true 
+  });
 };
 
 function FeatureCard({ icon, title, desc }) {
@@ -87,9 +89,20 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, "jobs"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "jobs"));
     const unsub = onSnapshot(q, (snapshot) => {
-      const fetchedJobs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      let fetchedJobs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      
+      fetchedJobs.sort((a, b) => {
+        const orderA = a.order ?? 0;
+        const orderB = b.order ?? 0;
+        if (orderA !== orderB) return orderA - orderB;
+        
+        const timeA = a.createdAt?.toMillis?.() || 0;
+        const timeB = b.createdAt?.toMillis?.() || 0;
+        return timeB - timeA;
+      });
+
       setJobs(fetchedJobs);
       setLoading(false);
 
@@ -150,7 +163,6 @@ export default function App() {
   }
 
   return (
-    // === التعديل هنا: تطبيق الخلفية الملونة المستوحاة على كامل الصفحة ===
     <div className="min-h-screen text-white font-sans text-left transition-all duration-500" style={{ background: themeColors.mainBgGradient }}>
       <motion.nav 
         initial={{ y: -50, opacity: 0 }}
@@ -166,7 +178,7 @@ export default function App() {
             <div className="hidden md:flex gap-6 text-sm font-bold text-gray-300">
               <button onClick={() => setView("home")} className={view === "home" ? "border-b-2 pb-1 text-white" : "hover:text-white transition-colors"} style={{ borderColor: view === "home" ? themeColors.accentPurple : "transparent" }}>Home</button>
               <button onClick={() => setView("jobs")} className={view === "jobs" ? "border-b-2 pb-1 text-white" : "hover:text-white transition-colors"} style={{ borderColor: view === "jobs" ? themeColors.accentPurple : "transparent" }}>Find Jobs</button>
-             
+              
               {currentUser && (
                 <button onClick={() => setView("recommended")} className={view === "recommended" ? "border-b-2 pb-1 text-white" : "hover:text-white transition-colors"} style={{ borderColor: view === "recommended" ? themeColors.accentPurple : "transparent" }}>Recommended</button>
               )}
@@ -189,7 +201,7 @@ export default function App() {
         )}
         <motion.main key={view} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.3 }} className="max-w-7xl mx-auto px-4 py-8 min-h-[70vh]">
           {view === "home" && <HomeView setView={setView} onFastApply={handleFastApply} />}
-         
+          
           {view === "jobs" && <JobsListView jobs={filteredJobs} filters={filters} setFilters={setFilters} onViewDetails={(j) => { setSelectedJob(j); setView("details"); }} locations={uniqueLocations} languages={uniqueLanguages} />}
           {view === "recommended" && <RecommendedJobsView jobs={filteredJobs} user={currentUser} onViewDetails={(j) => { setSelectedJob(j); setView("details"); }} />}
           {view === "details" && <JobDetailsView job={selectedJob} onBack={() => setView("jobs")} onApply={() => setView("apply")} />}
@@ -249,7 +261,7 @@ function UserProfileModal({ user, onClose, onLogout, onUpdate }) {
                    <div className="space-y-2">
                       <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Language</label>
                       <select value={editForm.language} onChange={(e) => setEditForm({...editForm, language: e.target.value})} className="w-full bg-white/5 p-4 rounded-xl font-bold border border-white/10 text-white outline-none focus:border-[#C48DFF]">
-                         {["English", "German", "French", "Italian", "Spanish"].map(l => <option className="bg-gray-900" key={l} value={l}>{l}</option>)}
+                         {["English", "German", "French", "Italian", "Spanish", "Danish"].map(l => <option className="bg-gray-900" key={l} value={l}>{l}</option>)}
                       </select>
                    </div>
                    <div className="space-y-2">
@@ -300,15 +312,13 @@ function UserProfileModal({ user, onClose, onLogout, onUpdate }) {
     </motion.div>
   );
 }
-// ===== السماعة اللي هتتحط فوق الروبوت =====
 
 function HomeView({ setView, onFastApply }) {
   const isPlaying = React.useRef(false);
-  const hasPlayedOnce = React.useRef(false); // عشان نضمن إنه يشتغل مرة واحدة بس في الحياة
+  const hasPlayedOnce = React.useRef(false); 
 
   useEffect(() => {
     const playAudio = () => {
-      // لو الصوت شغال حالياً، أو لو اشتغل قبل كده خلاص متعملش حاجة
       if (isPlaying.current || hasPlayedOnce.current) return;
 
       const audio = new Audio(process.env.PUBLIC_URL + "/welcome.mp3");
@@ -316,7 +326,7 @@ function HomeView({ setView, onFastApply }) {
 
       audio.onplay = () => {
         isPlaying.current = true;
-        hasPlayedOnce.current = true; // سجل إنه خلاص اشتغل
+        hasPlayedOnce.current = true; 
       };
       
       audio.onended = () => {
@@ -330,11 +340,9 @@ function HomeView({ setView, onFastApply }) {
       audio.play().catch((e) => console.log("Audio blocked by browser", e));
     };
 
-    // 1️⃣ لو ضغط على أي مكان في الصفحة العادية
     const handleGlobalClick = () => playAudio();
     window.addEventListener("click", handleGlobalClick);
 
-    // 2️⃣ الخدعة: لو ضغط جوه الـ iframe بتاع الروبوت
     const handleIframeClick = () => {
       setTimeout(() => {
         if (document.activeElement && document.activeElement.tagName === "IFRAME") {
@@ -352,8 +360,6 @@ function HomeView({ setView, onFastApply }) {
 
   return (
     <div className="space-y-16 text-center w-full">
-
-      {/* ===== Hero Section ===== */}
       <div
         className="relative flex flex-col overflow-hidden w-screen shadow-2xl border-b border-white/5"
         style={{
@@ -364,12 +370,10 @@ function HomeView({ setView, onFastApply }) {
           marginTop: "-2rem",
         }}
       >
-        {/* ===== الروبوت 3D ===== */}
         <div
           className="w-full h-[55vh] md:h-[70vh] relative z-0"
           style={{ overflow: "hidden" }}
         >
-          {/* iframe حر تماماً عشان يتفاعل مع الماوس */}
           <iframe
             src="https://my.spline.design/nexbotrobotcharacterconcept-sSaWP0eAxb1Ymk4UjUrJVSNp/"
             frameBorder="0"
@@ -377,90 +381,49 @@ function HomeView({ setView, onFastApply }) {
             className="w-full h-full relative z-0"
             style={{ border: "none" }}
           />
-
-          {/* ===== زر Fast Apply ===== */}
-          <motion.button
-            whileHover={{ scale: 1.08, boxShadow: "0 0 20px rgba(255,111,161,0.4)" }}
-            whileTap={{ scale: 0.95 }}
+          <button
             onClick={(e) => {
-              e.stopPropagation(); // عشان الزرار يعمل وظيفته
+              e.stopPropagation(); 
               onFastApply();
             }}
-            className="absolute bottom-3 right-3 z-30 bg-[#160a2b]/80 backdrop-blur-md text-white px-6 py-3 rounded-2xl font-bold shadow-xl flex items-center gap-2 border border-white/10"
+            className="absolute bottom-3 right-3 z-30 bg-[#160a2b]/80 backdrop-blur-md text-white px-6 py-3 rounded-2xl font-bold shadow-xl flex items-center gap-2 border border-white/10 hover:bg-black/80 transition-colors"
           >
             Fast Apply
             <Zap size={18} className="text-[#FF6FA1] fill-[#FF6FA1]" />
-          </motion.button>
-
-          
+          </button>
         </div>
 
-        {/* ===== الكلام والأزرار ===== */}
         <div className="relative z-20 w-full flex flex-col items-center text-center px-6 py-12 md:py-16">
-
-          <motion.div
-            className="flex flex-wrap justify-center gap-4 mb-10"
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          >
-            <motion.button
-              whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(196,141,255,0.6)" }}
-              whileTap={{ scale: 0.95 }}
+          <div className="flex flex-wrap justify-center gap-4 mb-10">
+            <button
               onClick={() => setView("jobs")}
-              className="text-gray-900 px-10 py-5 rounded-[2rem] font-bold text-xl flex items-center gap-3 transition-all"
+              className="text-gray-900 px-10 py-5 rounded-[2rem] font-bold text-xl flex items-center gap-3 transition-colors hover:opacity-90"
               style={{ backgroundColor: themeColors.accentPurple }}
             >
               Find Jobs <Search size={22} />
-            </motion.button>
+            </button>
 
-            <motion.button
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.15)" }}
-              whileTap={{ scale: 0.95 }}
+            <button
               onClick={onFastApply}
-              className="bg-black/20 backdrop-blur-md text-white px-10 py-5 rounded-[2rem] font-bold text-xl border border-white/20 shadow-xl flex items-center gap-3 transition-all"
+              className="bg-black/20 backdrop-blur-md text-white px-10 py-5 rounded-[2rem] font-bold text-xl border border-white/20 shadow-xl flex items-center gap-3 transition-colors hover:bg-white/10"
             >
               Fast Apply
               <Zap size={22} className="text-[#FF6FA1] fill-[#FF6FA1]" />
-            </motion.button>
-          </motion.div>
+            </button>
+          </div>
 
-          <motion.h1
-            className="text-5xl md:text-7xl font-black leading-tight text-white drop-shadow-[0_4px_15px_rgba(0,0,0,1)] max-w-4xl"
-            
-          >
-            Find your next{" "}
-            <motion.span
-              style={{ color: themeColors.accentPurple }}
-              
-            >
-              Call Center
-            </motion.span>{" "}
-            Job in Egypt
-          </motion.h1>
+          <h1 className="text-5xl md:text-7xl font-black leading-tight text-white drop-shadow-[0_4px_15px_rgba(0,0,0,1)] max-w-4xl">
+            Find your next <span style={{ color: themeColors.accentPurple }}>Call Center</span> Job in Egypt
+          </h1>
+
         </div>
       </div>
 
-      {/* ===== Feature Cards ===== */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 px-4 relative z-20">
-        <FeatureCard
-          icon={<Languages size={32} />}
-          title="Language Focus"
-          desc="Jobs for English, German, & French speakers."
-        />
-        <FeatureCard
-          icon={<CheckCircle size={32} />}
-          title="Fast Hiring"
-          desc="Get hired within 48 hours."
-        />
-        <FeatureCard
-          icon={<MapPin size={32} />}
-          title="Great Locations"
-          desc="Maadi, Nasr City, New Cairo, & more."
-        />
+        <FeatureCard icon={<Languages size={32} />} title="Language Focus" desc="Jobs for English, German, & French speakers." />
+        <FeatureCard icon={<CheckCircle size={32} />} title="Fast Hiring" desc="Get hired within 48 hours." />
+        <FeatureCard icon={<MapPin size={32} />} title="Great Locations" desc="Maadi, Nasr City, New Cairo, & more." />
       </div>
-
     </div>
   );
 }
@@ -504,22 +467,22 @@ function LoginView({ onLogin }) {
         
         <form onSubmit={handleSubmit} className="space-y-6 mt-10">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ApplyField label="Full Name" icon={<User size={18}/>} placeholder="Ahmed Mohamed" onChange={v => setFormData({...formData, name: v})}/>
-              <ApplyField label="Email" icon={<Mail size={18}/>} placeholder="ahmed@example.com" onChange={v => setFormData({...formData, email: v})}/>
+              <ApplyField label="Full Name" icon={<User size={18}/>} placeholder="Ahmed Mohamed" pattern="^[A-Za-z \u0600-\u06FF]+$" title="Please enter letters only (يرجى إدخال حروف فقط)" onChange={v => setFormData({...formData, name: v})}/>
+              <ApplyField label="Email" type="email" icon={<Mail size={18}/>} placeholder="ahmed@example.com" onChange={v => setFormData({...formData, email: v})}/>
            </div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ApplyField label="Phone" icon={<Phone size={18}/>} placeholder="01xxxxxxxxx" onChange={v => setFormData({...formData, phone: v})}/>
-              <ApplyField label="WhatsApp" icon={<Phone size={18}/>} placeholder="01xxxxxxxxx" onChange={()=>{}}/> 
+              <ApplyField label="Phone" type="tel" pattern="^[0-9]+$" title="Please enter numbers only (يرجى إدخال أرقام فقط)" icon={<Phone size={18}/>} placeholder="01xxxxxxxxx" onChange={v => setFormData({...formData, phone: v})}/>
+              <ApplyField label="WhatsApp" type="tel" pattern="^[0-9]+$" title="Please enter numbers only (يرجى إدخال أرقام فقط)" icon={<Phone size={18}/>} placeholder="01xxxxxxxxx" onChange={()=>{}}/> 
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <ApplySelect label="Language" icon={<Languages size={18}/>} options={["English", "German", "French", "Italian", "Spanish"]} onChange={v => setFormData({...formData, language: v})} />
+             <ApplySelect label="Language" icon={<Languages size={18}/>} options={["English", "German", "French", "Italian", "Spanish", "Danish"]} onChange={v => setFormData({...formData, language: v})} />
              <ApplySelect label="Experience" icon={<Briefcase size={18}/>} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} />
            </div>
 
            <div className="space-y-2">
-             <label className="block text-xs font-black text-gray-400 uppercase mx-2 tracking-wide">CV Link</label>
+             <label className="block text-xs font-black text-gray-400 uppercase mx-2 tracking-wide">CV Link (Optional)</label>
              <div className="flex gap-2">
                 <input 
                   type="text" 
@@ -573,36 +536,17 @@ function JobsListView({ jobs, filters, setFilters, onViewDetails, hideFilters = 
       {!hideFilters && (
         <div className="p-6 rounded-[2.5rem] shadow-lg border border-white/5 flex flex-wrap gap-4 items-center justify-between backdrop-blur-xl" style={{ backgroundColor: themeColors.glassCardBg }}>
            <div className="flex gap-4 items-center flex-1">
-             
-              <select 
-                value={filters.language}
-                onChange={(e) => setFilters(p => ({...p, language: e.target.value}))} 
-                className="bg-white/5 border border-white/10 text-white p-4 rounded-2xl font-bold outline-none cursor-pointer hover:bg-white/10 w-full md:w-auto shadow-sm focus:border-[#C48DFF] transition-all"
-              >
-                <option value="all" className="bg-gray-900">All Languages</option>
-                {languages.map(lang => (
-                   <option key={lang} value={lang} className="bg-gray-900">{lang}</option>
-                ))}
-              </select>
-
-              <select 
-                value={filters.location}
-                onChange={(e) => setFilters(p => ({...p, location: e.target.value}))} 
-                className="bg-white/5 border border-white/10 text-white p-4 rounded-2xl font-bold outline-none cursor-pointer hover:bg-white/10 w-full md:w-auto shadow-sm focus:border-[#C48DFF] transition-all"
-              >
-                <option value="all" className="bg-gray-900">All Locations</option>
-                {locations.map(loc => (
-                   <option key={loc} value={loc} className="bg-gray-900">{loc}</option>
-                ))}
-              </select>
-
-              <button 
-                onClick={() => setFilters({ language: "all", location: "all" })}
-                className="flex items-center gap-1 text-gray-400 hover:text-[#FF6FA1] font-bold text-sm transition-colors mr-2 w-full md:w-auto justify-center"
-                title="Reset"
-              >
-                <RotateCcw size={16} /> Reset
-              </button>
+             <select value={filters.language} onChange={(e) => setFilters(p => ({...p, language: e.target.value}))} className="bg-white/5 border border-white/10 text-white p-4 rounded-2xl font-bold outline-none cursor-pointer hover:bg-white/10 w-full md:w-auto shadow-sm focus:border-[#C48DFF] transition-all">
+               <option value="all" className="bg-gray-900">All Languages</option>
+               {languages.map(lang => <option key={lang} value={lang} className="bg-gray-900">{lang}</option>)}
+             </select>
+             <select value={filters.location} onChange={(e) => setFilters(p => ({...p, location: e.target.value}))} className="bg-white/5 border border-white/10 text-white p-4 rounded-2xl font-bold outline-none cursor-pointer hover:bg-white/10 w-full md:w-auto shadow-sm focus:border-[#C48DFF] transition-all">
+               <option value="all" className="bg-gray-900">All Locations</option>
+               {locations.map(loc => <option key={loc} value={loc} className="bg-gray-900">{loc}</option>)}
+             </select>
+             <button onClick={() => setFilters({ language: "all", location: "all" })} className="flex items-center gap-1 text-gray-400 hover:text-[#FF6FA1] font-bold text-sm transition-colors mr-2 w-full md:w-auto justify-center" title="Reset">
+               <RotateCcw size={16} /> Reset
+             </button>
            </div>
            <span className="text-gray-900 px-6 py-2.5 rounded-2xl font-bold w-full md:w-auto text-center mt-4 md:mt-0 shadow-md" style={{ backgroundColor: themeColors.accentPurple }}>{jobs.length} Jobs Available</span>
         </div>
@@ -610,22 +554,9 @@ function JobsListView({ jobs, filters, setFilters, onViewDetails, hideFilters = 
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {jobs.map((job) => (
-          <motion.div 
-            key={job.id}
-            variants={cardVariants}
-            initial="hidden"
-            animate="visible"
-            whileHover="hover"
-            className="p-8 rounded-[3rem] border border-white/5 shadow-xl flex flex-col items-center text-center group backdrop-blur-md"
-            style={{ backgroundColor: themeColors.glassCardBg }}
-          >
+          <motion.div key={job.id} variants={cardVariants} initial="hidden" animate="visible" whileHover="hover" className="p-8 rounded-[3rem] border border-white/5 shadow-xl flex flex-col items-center text-center group backdrop-blur-md" style={{ backgroundColor: themeColors.glassCardBg }}>
             <span className="bg-white/5 border border-white/5 text-[#C48DFF] px-4 py-1.5 rounded-full text-[10px] font-black uppercase mb-4 self-end tracking-widest shadow-inner">{job.language}</span>
-            <h3 
-              onClick={() => onViewDetails(job)}
-              className="text-2xl font-black mb-1 cursor-pointer transition-colors text-white group-hover:text-[#C48DFF]"
-            >
-              {job.title}
-            </h3>
+            <h3 onClick={() => onViewDetails(job)} className="text-2xl font-black mb-1 cursor-pointer transition-colors text-white group-hover:text-[#C48DFF]">{job.title}</h3>
             <p className="text-gray-400 font-bold mb-6">{job.company}</p>
             <div className="w-full space-y-2 mb-8">
               <JobInfoRow icon={<MapPin size={18} style={{ color: themeColors.accentPurple }}/>} label={job.location} />
@@ -642,6 +573,10 @@ function JobsListView({ jobs, filters, setFilters, onViewDetails, hideFilters = 
 }
 
 function JobDetailsView({ job, onBack, onApply }) {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   if (!job) return null;
   return (
     <div className="max-w-5xl mx-auto py-10 animate-in fade-in zoom-in duration-300">
@@ -670,13 +605,7 @@ function JobDetailsView({ job, onBack, onApply }) {
                 <DetailStat icon={<Briefcase color={themeColors.accentPurple}/>} title="Experience" value={job.experience} />
                 <DetailStat icon={<Clock className="text-[#FF6FA1]"/>} title="Shift" value={job.shift} />
               </div>
-              <motion.button 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={onApply} 
-                className="w-full text-white py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 mt-10 hover:opacity-90 transition-colors border border-white/5"
-                style={{ backgroundColor: themeColors.applyBtn }} 
-              >
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }} onClick={onApply} className="w-full text-white py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 mt-10 hover:opacity-90 transition-colors border border-white/5" style={{ backgroundColor: themeColors.applyBtn }}>
                 <Send size={20} className="-mt-1"/> Apply Now
               </motion.button>
             </div>
@@ -715,12 +644,175 @@ function JobDetailsView({ job, onBack, onApply }) {
   );
 }
 
+function RecruiterCandidateForm({ jobs, onAdded }) {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    jobId: "", name: "", phone: "", age: "", gender: "", status: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: ""
+  });
+  const [cvFile, setCvFile] = useState(null);
+  const [audioFile, setAudioFile] = useState(null);
+
+  const scriptUrl = "https://script.google.com/macros/s/AKfycbyFMRbyZSjyp8pXTymYBm2zhw_uoEhbXUEvm4CbxE7o9Fxs2Nf-3aovgry-Qa-DDHf8/exec";
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if(!formData.jobId || !formData.name || !formData.phone || (!audioFile && !formData.audioUrl)) {
+       return alert("Please fill all required fields and provide an audio file or link.");
+    }
+    setLoading(true);
+    try {
+      let finalCvUrl = formData.cvUrl;
+      let finalAudioUrl = formData.audioUrl;
+
+      if (cvFile) {
+        const cvData = new FormData();
+        cvData.append("file", cvFile);
+        cvData.append("upload_preset", UPLOAD_PRESET);
+        cvData.append("cloud_name", CLOUD_NAME);
+        cvData.append("resource_type", "auto");
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: cvData });
+        const data = await res.json();
+        if(data.error) throw new Error(data.error.message);
+        finalCvUrl = data.secure_url;
+      }
+
+      if (audioFile) {
+        const audioData = new FormData();
+        audioData.append("file", audioFile);
+        audioData.append("upload_preset", UPLOAD_PRESET);
+        audioData.append("cloud_name", CLOUD_NAME);
+        audioData.append("resource_type", "video");
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: audioData });
+        const data = await res.json();
+        if(data.error) throw new Error(data.error.message);
+        finalAudioUrl = data.secure_url;
+      }
+
+      const selectedJob = jobs.find(j => j.id === formData.jobId);
+
+      const sheetData = new FormData();
+      sheetData.append('name', formData.name);
+      sheetData.append('phone', formData.phone);
+      sheetData.append('age', formData.age);
+      sheetData.append('education', formData.status);
+      sheetData.append('gender', formData.gender);
+      sheetData.append('experience', formData.experience);
+      sheetData.append('jobTitle', selectedJob.title);
+      sheetData.append('company', selectedJob.company);
+      sheetData.append('cvUrl', finalCvUrl);
+      sheetData.append('audioUrl', finalAudioUrl);
+      sheetData.append('hrRecruiterName', formData.hrRecruiterName);
+
+      fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' }).catch(e=>console.log(e));
+
+      const emailData = {
+        service_id: 'service_danc0or', 
+        template_id: 'template_95u7884', 
+        user_id: 'dyEaKTlzW6EAKxNjd', 
+        template_params: {
+          'candidate_name': formData.name,
+          'job_title': selectedJob.title,
+          'candidate_phone': formData.phone,
+          'experience': formData.experience
+        }
+      };
+
+      fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        body: JSON.stringify(emailData),
+        headers: { 'Content-Type': 'application/json' }
+      }).then(() => {
+        console.log("Email sent via EmailJS!");
+      }).catch((err) => {
+        console.error("EmailJS Error:", err);
+      });
+
+      await addDoc(collection(db, "applications"), {
+        ...formData,
+        cvUrl: finalCvUrl,
+        audioUrl: finalAudioUrl,
+        jobTitle: selectedJob.title,
+        jobId: selectedJob.id,
+        appliedAt: serverTimestamp()
+      });
+
+      alert("Candidate added successfully!");
+      setFormData({ jobId: "", name: "", phone: "", age: "", gender: "", status: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: ""});
+      setCvFile(null);
+      setAudioFile(null);
+      onAdded();
+    } catch(err) {
+      alert(err.message);
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-4 mb-10 text-left">
+       <h3 className="text-3xl font-black mb-8 text-center text-white">Add New Candidate</h3>
+       <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <div className="space-y-2 text-left">
+               <label className="block text-xs font-black text-gray-400 uppercase tracking-wide">Select Job *</label>
+               <select required value={formData.jobId} onChange={e => setFormData({...formData, jobId: e.target.value})} className="w-full bg-white/5 p-5 rounded-3xl font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] text-white transition-all shadow-sm">
+                 <option value="" className="bg-gray-900">Choose Job...</option>
+                 {jobs.map(j => <option key={j.id} value={j.id} className="bg-gray-900">{j.title} ({j.company})</option>)}
+               </select>
+             </div>
+             <ApplyField label="HR Recruiter Name" icon={<User size={18}/>} placeholder="Your Name" value={formData.hrRecruiterName} onChange={v => setFormData({...formData, hrRecruiterName: v})} required/>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <ApplyField label="Candidate Name" icon={<User size={18}/>} placeholder="Name" value={formData.name} onChange={v => setFormData({...formData, name: v})} pattern="^[A-Za-z \u0600-\u06FF]+$" title="Letters only" required/>
+             <ApplyField label="Phone" type="tel" icon={<Phone size={18}/>} placeholder="01xxxxxxxxx" value={formData.phone} onChange={v => setFormData({...formData, phone: v})} pattern="^[0-9]+$" title="Numbers only" required/>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <ApplySelect label="Education Status" icon={<GraduationCap size={18}/>} options={["Student", "Graduate", "Drop-out"]} onChange={v => setFormData({...formData, status: v})} required/>
+             <ApplySelect label="Gender" icon={<Users size={18}/>} options={["Male", "Female"]} onChange={v => setFormData({...formData, gender: v})} required/>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <ApplySelect label="Experience" icon={<Briefcase size={18}/>} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} required/>
+             <ApplyField label="Age" type="number" icon={<Calendar size={18}/>} placeholder="e.g. 25" onChange={v => setFormData({...formData, age: v})} required/>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-black/30 p-8 rounded-[2rem] border border-white/5">
+             <div className="space-y-4 border-b md:border-b-0 md:border-r border-white/5 pb-6 md:pb-0 md:pr-6 text-center md:text-left">
+                <label className="block text-xs font-black text-[#FF6FA1] uppercase tracking-wide">Audio Record (Link or File) *</label>
+                <input type="text" placeholder="Audio Link (e.g. Google Drive)" className="w-full bg-white/5 p-5 rounded-2xl outline-none border border-white/5 focus:border-[#C48DFF] text-white text-sm transition-all" value={formData.audioUrl} onChange={e => setFormData({...formData, audioUrl: e.target.value})}/>
+                <p className="text-center text-gray-500 text-xs font-bold">- OR -</p>
+                <div className="relative">
+                   <input type="file" id="audio-upload-form" accept="audio/*" onChange={e => setAudioFile(e.target.files[0])} className="hidden"/>
+                   <label htmlFor="audio-upload-form" className={`w-full py-4 px-5 rounded-2xl text-sm font-bold flex items-center justify-center cursor-pointer transition-all border ${audioFile ? 'bg-green-500/20 text-green-400 border-green-500/50' : 'bg-[#C48DFF]/10 text-[#C48DFF] border-[#C48DFF]/30 hover:bg-[#C48DFF]/20'}`}>
+                      {audioFile ? `Selected: ${audioFile.name}` : "Upload Audio File"}
+                   </label>
+                </div>
+             </div>
+             <div className="space-y-4 md:pl-2 text-center md:text-left">
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-wide">CV (Link or File) - Optional</label>
+                <input type="text" placeholder="CV Link" className="w-full bg-white/5 p-5 rounded-2xl outline-none border border-white/5 focus:border-white/20 text-white text-sm transition-all" value={formData.cvUrl} onChange={e => setFormData({...formData, cvUrl: e.target.value})}/>
+                <p className="text-center text-gray-500 text-xs font-bold">- OR -</p>
+                <div className="relative">
+                   <input type="file" id="cv-upload-form" accept=".pdf,.doc,.docx" onChange={e => setCvFile(e.target.files[0])} className="hidden"/>
+                   <label htmlFor="cv-upload-form" className={`w-full py-4 px-5 rounded-2xl text-sm font-bold flex items-center justify-center cursor-pointer transition-all border ${cvFile ? 'bg-green-500/20 text-green-400 border-green-500/50' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'}`}>
+                      {cvFile ? `Selected: ${cvFile.name}` : "Upload CV File"}
+                   </label>
+                </div>
+             </div>
+          </div>
+
+          <button disabled={loading} type="submit" className="w-full text-white py-5 rounded-[2rem] font-bold text-xl flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-[0_10px_30px_rgba(50,150,255,0.3)]" style={{ backgroundColor: themeColors.applyBtn }}>
+            {loading ? <Loader2 className="animate-spin"/> : <Send size={24} className="-mt-1"/>} Submit Candidate
+          </button>
+       </form>
+    </div>
+  );
+}
+
 function AdminPanelView({ jobs, onViewJob }) {
   const [isAuth, setIsAuth] = useState(false); 
   const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   
-  const [unlockedTabs, setUnlockedTabs] = useState(["recruiter_apps"]); 
+  const [unlockedTabs, setUnlockedTabs] = useState(["recruiter_apps", "add_candidate"]); 
   const [activeTab, setActiveTab] = useState(null); 
   
   const [pendingTab, setPendingTab] = useState(null);
@@ -760,7 +852,7 @@ function AdminPanelView({ jobs, onViewJob }) {
   const handleRateEnglish = async (appId, level) => {
     try {
       const appRef = doc(db, "applications", appId);
-      await updateDoc(appRef, { englishLevel: level });
+      await updateDoc(appRef, { englishLevel: level, validatedAt: serverTimestamp() });
     } catch (err) {
       alert("Error updating level: " + err.message);
     }
@@ -769,7 +861,7 @@ function AdminPanelView({ jobs, onViewJob }) {
   const handleAppStatus = async (appId, newStatus) => {
     try {
       const appRef = doc(db, "applications", appId);
-      await updateDoc(appRef, { status: newStatus });
+      await updateDoc(appRef, { status: newStatus, validatedAt: serverTimestamp() });
     } catch (err) {
       alert("Error updating status: " + err.message);
     }
@@ -779,15 +871,37 @@ function AdminPanelView({ jobs, onViewJob }) {
     setLoading(true);
     try {
       if (editingId) {
-        await updateDoc(doc(db, "jobs", editingId), form);
+        await updateDoc(doc(db, "jobs", editingId), { ...form, updatedAt: serverTimestamp() });
         setEditingId(null);
       } else {
-        await addDoc(collection(db, "jobs"), { ...form, createdAt: serverTimestamp() });
+        await addDoc(collection(db, "jobs"), { 
+          ...form, 
+          createdAt: serverTimestamp(),
+          order: jobs.length 
+        });
       }
       setForm({ title: "", company: "", location: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "" });
       alert("Job Saved Successfully");
     } catch (e) { alert(e.message); }
     setLoading(false);
+  };
+
+  const moveJob = async (index, direction) => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === jobs.length - 1) return;
+
+    const job1 = jobs[index];
+    const job2 = jobs[direction === "up" ? index - 1 : index + 1];
+
+    const order1 = job1.order ?? index;
+    const order2 = job2.order ?? (direction === "up" ? index - 1 : index + 1);
+
+    try {
+      await updateDoc(doc(db, "jobs", job1.id), { order: order2 });
+      await updateDoc(doc(db, "jobs", job2.id), { order: order1 });
+    } catch (err) {
+      console.error("Error moving job:", err);
+    }
   };
 
   const handleTabClick = (tabName) => {
@@ -806,13 +920,13 @@ function AdminPanelView({ jobs, onViewJob }) {
       setActiveTab(pendingTab);
       setPendingTab(null);
       setSecPass("");
-    } else if (pendingTab === "jobs" && secPass === "samaltman") {
-      setUnlockedTabs(prev => [...prev, "jobs"]);
+    } else if ((pendingTab === "jobs" || pendingTab === "users") && secPass === "samaltman") {
+      setUnlockedTabs(prev => [...prev, "jobs", "users"]);
       setActiveTab(pendingTab);
       setPendingTab(null);
       setSecPass("");
-    } else if ((pendingTab === "applications" || pendingTab === "users") && secPass === "rayan") {
-      setUnlockedTabs(prev => [...prev, "applications", "users"]);
+    } else if ((pendingTab === "applications" || pendingTab === "add_candidate") && secPass === "rayan") {
+      setUnlockedTabs(prev => [...prev, "applications", "add_candidate"]);
       setActiveTab(pendingTab);
       setPendingTab(null);
       setSecPass("");
@@ -827,26 +941,10 @@ function AdminPanelView({ jobs, onViewJob }) {
         <Lock className="mx-auto mb-6 text-[#C48DFF]" size={48}/>
         <h2 className="text-2xl font-bold mb-8 text-white">Admin Login</h2>
         <div className="relative mb-6">
-           <input 
-             type={showPass ? "text" : "password"} 
-             onChange={(e)=>setPass(e.target.value)} 
-             onKeyDown={(e) => e.key === 'Enter' && (pass === "scoutech" ? setIsAuth(true) : alert("Wrong Password"))}
-             className="w-full bg-white/5 p-5 rounded-2xl text-center font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all shadow-sm text-white placeholder:text-gray-500" 
-             placeholder="******"
-           />
+           <input type={showPass ? "text" : "password"} onChange={(e)=>setPass(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (pass === "scoutech" ? setIsAuth(true) : alert("Wrong Password"))} className="w-full bg-white/5 p-5 rounded-2xl text-center font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all shadow-sm text-white placeholder:text-gray-500" placeholder="******" />
            <button onClick={()=>setShowPass(!showPass)} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors">{showPass ? <EyeOff size={22}/> : <Eye size={22}/>}</button>
         </div>
-        <button 
-           onClick={() => {
-             if (pass === "scoutech") {
-                setIsAuth(true);
-             } else {
-                alert("Wrong Password");
-             }
-           }} 
-           className="w-full text-gray-900 py-5 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-all" 
-           style={{ backgroundColor: themeColors.accentPurple }}
-        >
+        <button onClick={() => { if (pass === "scoutech") { setIsAuth(true); } else { alert("Wrong Password"); } }} className="w-full text-gray-900 py-5 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-all" style={{ backgroundColor: themeColors.accentPurple }}>
           Login
         </button>
       </div>
@@ -856,38 +954,20 @@ function AdminPanelView({ jobs, onViewJob }) {
   return (
     <div className="py-10 space-y-10">
       
-      <div className="flex flex-col md:flex-row justify-center gap-4 mb-10 px-4 flex-wrap">
-        <button 
-           onClick={() => handleTabClick("jobs")} 
-           className={`px-8 py-4 rounded-2xl font-bold transition-all shadow-lg border ${activeTab === "jobs" && !pendingTab ? "text-gray-900 border-transparent" : "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10"}`} 
-           style={{ backgroundColor: activeTab === "jobs" && !pendingTab ? themeColors.accentPurple : "" }}
-        >
-           Manage Jobs
-        </button>
+      <div className="flex flex-col md:flex-row items-center gap-4 mb-10 px-4 flex-wrap w-full bg-black/20 p-4 rounded-[2rem] border border-white/5">
         
-        <button 
-           onClick={() => handleTabClick("applications")} 
-           className={`px-8 py-4 rounded-2xl font-bold transition-all shadow-lg border ${activeTab === "applications" || pendingTab === "applications" ? "text-gray-900 border-transparent" : "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10"}`} 
-           style={{ backgroundColor: activeTab === "applications" || pendingTab === "applications" ? themeColors.accentPurple : "" }}
-        >
-           Applications ({applications.length})
-        </button>
-        
-        <button 
-           onClick={() => handleTabClick("recruiter_apps")} 
-           className={`px-8 py-4 rounded-2xl font-bold transition-all shadow-lg border ${activeTab === "recruiter_apps" && !pendingTab ? "text-gray-900 border-transparent" : "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10"}`} 
-           style={{ backgroundColor: activeTab === "recruiter_apps" && !pendingTab ? themeColors.accentPurple : "" }}
-        >
-           Recruiter Apps ({applications.filter(a => a.hrRecruiterName && a.hrRecruiterName.trim() !== "").length})
-        </button>
+        <div className="flex flex-wrap justify-center gap-4 flex-1">
+          <button onClick={() => handleTabClick("applications")} className={`px-6 py-4 rounded-2xl font-bold transition-all shadow-lg border ${activeTab === "applications" || pendingTab === "applications" ? "text-gray-900 border-transparent" : "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10"}`} style={{ backgroundColor: activeTab === "applications" || pendingTab === "applications" ? themeColors.accentPurple : "" }}>Applications ({applications.length})</button>
+          <button onClick={() => handleTabClick("recruiter_apps")} className={`px-6 py-4 rounded-2xl font-bold transition-all shadow-lg border ${activeTab === "recruiter_apps" && !pendingTab ? "text-gray-900 border-transparent" : "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10"}`} style={{ backgroundColor: activeTab === "recruiter_apps" && !pendingTab ? themeColors.accentPurple : "" }}>Recruiter Apps ({applications.filter(a => a.hrRecruiterName && a.hrRecruiterName.trim() !== "").length})</button>
+          <button onClick={() => handleTabClick("add_candidate")} className={`px-6 py-4 rounded-2xl font-bold transition-all shadow-lg border ${activeTab === "add_candidate" || pendingTab === "add_candidate" ? "text-gray-900 border-transparent" : "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10"}`} style={{ backgroundColor: activeTab === "add_candidate" || pendingTab === "add_candidate" ? themeColors.accentPurple : "" }}>Add Candidate</button>
+        </div>
 
-        <button 
-           onClick={() => handleTabClick("users")} 
-           className={`px-8 py-4 rounded-2xl font-bold transition-all shadow-lg border ${activeTab === "users" || pendingTab === "users" ? "text-gray-900 border-transparent" : "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10"}`} 
-           style={{ backgroundColor: activeTab === "users" || pendingTab === "users" ? themeColors.accentPurple : "" }}
-        >
-           Users ({users.length})
-        </button>
+        <div className="hidden md:block w-px h-12 bg-white/10 mx-2"></div>
+
+        <div className="flex flex-wrap justify-center gap-3 opacity-70 hover:opacity-100 transition-opacity mt-4 md:mt-0">
+          <button onClick={() => handleTabClick("jobs")} className={`px-4 py-3 text-sm rounded-xl font-bold transition-all border ${activeTab === "jobs" && !pendingTab ? "text-gray-900 border-transparent" : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:text-white"}`} style={{ backgroundColor: activeTab === "jobs" && !pendingTab ? themeColors.accentPurple : "" }}>Manage Jobs</button>
+          <button onClick={() => handleTabClick("users")} className={`px-4 py-3 text-sm rounded-xl font-bold transition-all border ${activeTab === "users" || pendingTab === "users" ? "text-gray-900 border-transparent" : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:text-white"}`} style={{ backgroundColor: activeTab === "users" || pendingTab === "users" ? themeColors.accentPurple : "" }}>Users ({users.length})</button>
+        </div>
       </div>
 
       {pendingTab && (
@@ -895,33 +975,12 @@ function AdminPanelView({ jobs, onViewJob }) {
           <div className="p-10 md:p-12 rounded-[3rem] shadow-2xl border border-white/5 w-full max-w-md text-center backdrop-blur-xl" style={{ backgroundColor: themeColors.glassCardBg }}>
             <Lock className="mx-auto mb-6 text-[#C48DFF]" size={48}/>
             <h2 className="text-2xl font-bold mb-2 text-white">Secure Section</h2>
-            <p className="text-gray-400 mb-8 font-medium">
-               Password required to open {
-                  pendingTab === "jobs" ? "Manage Jobs" : 
-                  pendingTab === "applications" ? "Applications" : 
-                  "Users"
-               }
-            </p>
-            
+            <p className="text-gray-400 mb-8 font-medium">Password required to open {pendingTab === "jobs" ? "Manage Jobs" : pendingTab === "applications" ? "Applications" : pendingTab === "add_candidate" ? "Add Candidate" : "Users"}</p>
             <div className="relative mb-6">
-               <input 
-                 type={showSecPass ? "text" : "password"} 
-                 value={secPass}
-                 onChange={(e)=>setSecPass(e.target.value)} 
-                 onKeyDown={(e) => e.key === 'Enter' && handleUnlockTab()}
-                 className="w-full bg-white/5 p-5 rounded-2xl text-center font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all shadow-sm text-white placeholder:text-gray-500" 
-                 placeholder="******"
-               />
+               <input type={showSecPass ? "text" : "password"} value={secPass} onChange={(e)=>setSecPass(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleUnlockTab()} className="w-full bg-white/5 p-5 rounded-2xl text-center font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all shadow-sm text-white placeholder:text-gray-500" placeholder="******" />
                <button onClick={()=>setShowSecPass(!showSecPass)} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors">{showSecPass ? <EyeOff size={22}/> : <Eye size={22}/>}</button>
             </div>
-            
-            <button 
-               onClick={handleUnlockTab} 
-               className="w-full text-gray-900 py-5 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-all" 
-               style={{ backgroundColor: themeColors.accentPurple }}
-            >
-               Unlock Tab
-            </button>
+            <button onClick={handleUnlockTab} className="w-full text-gray-900 py-5 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-all" style={{ backgroundColor: themeColors.accentPurple }}>Unlock Tab</button>
           </div>
         </div>
       )}
@@ -930,7 +989,13 @@ function AdminPanelView({ jobs, onViewJob }) {
         <div className="text-center py-20 animate-in fade-in">
            <Lock className="mx-auto mb-6 text-gray-500" size={60}/>
            <h2 className="text-3xl font-black mb-4 text-white">Welcome to Admin Dashboard</h2>
-           <p className="text-gray-400 font-bold">Please select a tab from above to continue.</p>
+           <p className="text-gray-400 font-bold">Please select a tab to continue.</p>
+        </div>
+      )}
+
+      {!pendingTab && activeTab === "add_candidate" && (
+        <div className="max-w-4xl mx-auto px-4">
+           <RecruiterCandidateForm jobs={jobs} onAdded={() => setActiveTab("recruiter_apps")} />
         </div>
       )}
 
@@ -959,17 +1024,34 @@ function AdminPanelView({ jobs, onViewJob }) {
               </button>
             </div>
           </div>
+          
           <div className="max-w-4xl mx-auto space-y-4">
             <h3 className="text-2xl font-bold mb-6 mr-4 text-white">Active Jobs</h3>
-            {jobs.map(j => (
-              <div key={j.id} className="p-6 rounded-3xl shadow-sm border border-white/5 flex justify-between items-center backdrop-blur-sm" style={{ backgroundColor: themeColors.glassCardBg }}>
-                <div className="flex gap-2">
-                  <button onClick={() => {setEditingId(j.id); setForm(j); window.scrollTo({top:0, behavior:"smooth"});}} className="p-3 bg-white/5 text-[#C48DFF] border border-white/5 rounded-2xl hover:bg-[#C48DFF] hover:text-gray-900 transition-all"><Edit3 size={20}/></button>
-                  <button onClick={async () => window.confirm("Are you sure?") && await deleteDoc(doc(db, "jobs", j.id))} className="p-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={20}/></button>
+            {jobs.map((j, index) => (
+              <div key={j.id} className="p-6 rounded-3xl shadow-sm border border-white/5 flex flex-col md:flex-row justify-between items-center backdrop-blur-sm gap-4" style={{ backgroundColor: themeColors.glassCardBg }}>
+                
+                <div className="flex gap-4 items-center w-full md:w-auto">
+                   <div className="flex flex-col gap-1">
+                      <button onClick={() => moveJob(index, "up")} disabled={index === 0} className="p-1.5 bg-white/5 text-gray-400 border border-white/5 rounded-xl hover:bg-white/10 hover:text-white transition-all disabled:opacity-30 disabled:hover:bg-white/5 disabled:hover:text-gray-400">
+                         <ArrowUp size={16}/>
+                      </button>
+                      <button onClick={() => moveJob(index, "down")} disabled={index === jobs.length - 1} className="p-1.5 bg-white/5 text-gray-400 border border-white/5 rounded-xl hover:bg-white/10 hover:text-white transition-all disabled:opacity-30 disabled:hover:bg-white/5 disabled:hover:text-gray-400">
+                         <ArrowDown size={16}/>
+                      </button>
+                   </div>
+                   <div className="flex gap-2">
+                     <button onClick={() => {setEditingId(j.id); setForm(j); window.scrollTo({top:0, behavior:"smooth"});}} className="p-3 bg-white/5 text-[#C48DFF] border border-white/5 rounded-2xl hover:bg-[#C48DFF] hover:text-gray-900 transition-all"><Edit3 size={20}/></button>
+                     <button onClick={async () => window.confirm("Are you sure?") && await deleteDoc(doc(db, "jobs", j.id))} className="p-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={20}/></button>
+                   </div>
                 </div>
-                <div className="text-right">
+
+                <div className="text-right w-full md:w-auto">
                   <h4 className="font-bold text-lg text-white">{j.title}</h4>
                   <p className="text-gray-400 font-bold text-sm">{j.company} • {j.location}</p>
+                  <div className="flex flex-col md:flex-row items-end gap-1 md:gap-3 mt-2 text-xs text-gray-500">
+                     <span className="flex items-center gap-1"><Clock size={12}/> Posted: {j.createdAt ? formatDateTime(j.createdAt) : "N/A"}</span>
+                     {j.updatedAt && <span className="flex items-center gap-1 text-gray-400"><Edit3 size={12}/> Updated: {formatDateTime(j.updatedAt)}</span>}
+                  </div>
                 </div>
               </div>
             ))}
@@ -995,12 +1077,8 @@ function AdminPanelView({ jobs, onViewJob }) {
 
           {activeTab === "applications" && (
             <div className="mb-6 flex justify-end">
-               <button 
-                 onClick={() => setHideRecruiterApps(!hideRecruiterApps)}
-                 className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm border ${hideRecruiterApps ? 'bg-[#C48DFF]/10 text-[#C48DFF] border-[#C48DFF]/30' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10 hover:text-white'}`}
-               >
-                 {hideRecruiterApps ? <EyeOff size={18} /> : <Eye size={18} />}
-                 {hideRecruiterApps ? "Show Recruiter Apps" : "Hide Recruiter Apps"}
+               <button onClick={() => setHideRecruiterApps(!hideRecruiterApps)} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm border ${hideRecruiterApps ? 'bg-[#C48DFF]/10 text-[#C48DFF] border-[#C48DFF]/30' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10 hover:text-white'}`}>
+                 {hideRecruiterApps ? <EyeOff size={18} /> : <Eye size={18} />} {hideRecruiterApps ? "Show Recruiter Apps" : "Hide Recruiter Apps"}
                </button>
             </div>
           )}
@@ -1030,7 +1108,8 @@ function AdminPanelView({ jobs, onViewJob }) {
              return (
                <div className="grid grid-cols-1 gap-6">
                   {displayedApps.map(app => (
-                    <div key={app.id} className="p-8 rounded-[2.5rem] shadow-sm border border-white/5 relative group hover:shadow-xl transition-all backdrop-blur-md" style={{ backgroundColor: themeColors.glassCardBg }}>
+                    <div key={app.id} className="p-8 rounded-[2.5rem] shadow-sm border border-white/5 relative group hover:shadow-xl transition-all backdrop-blur-md flex flex-col" style={{ backgroundColor: themeColors.glassCardBg }}>
+                       
                        <div className="absolute top-8 right-8">
                           {app.englishLevel ? (
                             <span className={`px-4 py-2 rounded-xl text-white font-bold text-sm shadow-md ${
@@ -1046,20 +1125,17 @@ function AdminPanelView({ jobs, onViewJob }) {
 
                        <div className="absolute top-8 left-8">
                           <span className={`px-4 py-1.5 rounded-full text-xs font-bold shadow-sm border ${
-                             app.status === 'Accepted' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                             app.status === 'Rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                             'bg-[#C48DFF]/20 text-[#C48DFF] border-[#C48DFF]/30'
+                              app.status === 'Accepted' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                              app.status === 'Rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                              'bg-[#C48DFF]/20 text-[#C48DFF] border-[#C48DFF]/30'
                           }`}>
-                             {app.status || "New"}
+                              {app.status || "New"}
                           </span>
                        </div>
                        
-                       <div className="flex flex-col md:flex-row md:items-center gap-8 mt-8">
+                       <div className="flex flex-col md:flex-row md:items-center gap-8 mt-12 mb-4">
                           
-                          <div 
-                             onClick={() => onViewJob(app.jobId)}
-                             className="flex items-center gap-4 cursor-pointer hover:bg-white/5 p-2 rounded-3xl transition-all group/profile"
-                          >
+                          <div onClick={() => onViewJob(app.jobId)} className="flex items-center gap-4 cursor-pointer hover:bg-white/5 p-2 rounded-3xl transition-all group/profile">
                               <div className="w-16 h-16 rounded-full flex items-center justify-center text-gray-900 font-bold text-2xl transition-colors shadow-md" style={{ backgroundColor: themeColors.accentPurple }}>
                                  {app.name.charAt(0)}
                               </div>
@@ -1074,7 +1150,9 @@ function AdminPanelView({ jobs, onViewJob }) {
                           </div>
 
                           <div className="flex-1 space-y-2 mx-4">
-                             <p className="text-gray-300 font-bold flex items-center gap-2"><Phone size={16} className="text-[#C48DFF]"/> {app.phone}</p>
+                             {activeTab !== "recruiter_apps" && (
+                                <p className="text-gray-300 font-bold flex items-center gap-2"><Phone size={16} className="text-[#C48DFF]"/> {app.phone}</p>
+                             )}
                              <div className="flex gap-4 mt-2 text-sm text-gray-400 flex-wrap">
                                  {app.age && <span>Age: {app.age}</span>}
                                  {app.age && <span>•</span>}
@@ -1095,6 +1173,18 @@ function AdminPanelView({ jobs, onViewJob }) {
                                    {app.audioUrl ? (
                                        <>
                                          <audio controls src={app.audioUrl} className="w-full h-10 invert opacity-90" />
+                                         
+                                         {/* === أزرار النسخ والتحميل مع تعديل امتداد الملف إلى MP3 للتحميل المباشر === */}
+                                         <div className="flex gap-4 w-full justify-center mt-2 mb-1">
+                                            <button onClick={() => { navigator.clipboard.writeText(app.audioUrl); alert("Audio link copied!"); }} className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-white transition-colors">
+                                              <Copy size={14}/> Copy Link
+                                            </button>
+                                            <a href={app.audioUrl?.includes("cloudinary.com") ? app.audioUrl.replace("/upload/", "/upload/fl_attachment/").replace(/\.[a-zA-Z0-9]+$/, ".mp3") : app.audioUrl} download={`${app.name.replace(/\s+/g, '_')}_Audio.mp3`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-white transition-colors">
+                                              <Download size={14}/> Download MP3
+                                            </a>
+                                         </div>
+                                         {/* ====================================================================== */}
+
                                          <div className="w-full flex items-center gap-2 mt-2">
                                            <Languages size={16} className="text-[#C48DFF]"/>
                                            <select 
@@ -1143,7 +1233,6 @@ function AdminPanelView({ jobs, onViewJob }) {
                                        <option className="bg-gray-900" value="Rejected">Rejected</option>
                                      </select>
                                    </div>
-
                                </div>
                                {app.cvUrl && (
                                    <a href={app.cvUrl} target="_blank" rel="noreferrer" className="text-gray-900 p-3 rounded-2xl flex items-center justify-center gap-2 font-bold hover:opacity-90 transition-colors shadow-md" style={{ backgroundColor: themeColors.accentPurple }}>
@@ -1157,8 +1246,15 @@ function AdminPanelView({ jobs, onViewJob }) {
                                <Trash2 size={20} />
                             </button>
                           )}
-
                        </div>
+
+                       <div className="mt-auto pt-4 border-t border-white/5 flex flex-wrap justify-between items-center gap-4 text-xs font-bold text-gray-500">
+                          <span className="flex items-center gap-1"><Clock size={14}/> Applied: {app.appliedAt ? formatDateTime(app.appliedAt) : "N/A"}</span>
+                          {app.validatedAt && (
+                             <span className="flex items-center gap-1" style={{ color: themeColors.accentPink }}><CheckCircle size={14}/> Validated: {formatDateTime(app.validatedAt)}</span>
+                          )}
+                       </div>
+
                     </div>
                   ))}
                </div>
@@ -1206,6 +1302,10 @@ function AdminPanelView({ jobs, onViewJob }) {
 }
 
 function ApplicationPage({ job, onBack, user }) {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -1214,7 +1314,6 @@ function ApplicationPage({ job, onBack, user }) {
   const mediaRecorder = React.useRef(null);
   const audioChunks = React.useRef([]);
   const timerRef = React.useRef(null); 
-  const [cvFile, setCvFile] = useState(null);
 
   const [formData, setFormData] = useState({
     name: user?.name || "", 
@@ -1293,19 +1392,6 @@ function ApplicationPage({ job, onBack, user }) {
         publicAudioUrl = file.secure_url;
       }
 
-      if (cvFile) {
-        const cvData = new FormData();
-        cvData.append("file", cvFile);
-        cvData.append("upload_preset", UPLOAD_PRESET);
-        cvData.append("cloud_name", CLOUD_NAME);
-        cvData.append("resource_type", "auto"); 
-
-        const cvRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: cvData });
-        const cvJson = await cvRes.json();
-        if (cvJson.error) throw new Error(cvJson.error.message);
-        publicCvUrl = cvJson.secure_url;
-      }
-
       const sheetData = new FormData();
       sheetData.append('name', formData.name);
       sheetData.append('phone', formData.phone);
@@ -1319,14 +1405,36 @@ function ApplicationPage({ job, onBack, user }) {
       sheetData.append('audioUrl', publicAudioUrl);
       sheetData.append('hrRecruiterName', formData.hrRecruiterName); 
 
-      // 1. إرسال البيانات لجوجل شيت بدون انتظار
+      // 1. Google Sheets
       fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' }).catch(e => console.error(e));
       
-      // 2. إظهار رسالة النجاح فوراً للمستخدم
+      // 2. EmailJS
+      const emailData = {
+        service_id: 'service_danc0or', 
+        template_id: 'template_95u7884', 
+        user_id: 'dyEaKTlzW6EAKxNjd', 
+        template_params: {
+          'candidate_name': formData.name,
+          'job_title': job.title,
+          'candidate_phone': formData.phone,
+          'experience': formData.experience
+        }
+      };
+
+      fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        body: JSON.stringify(emailData),
+        headers: { 'Content-Type': 'application/json' }
+      }).then(() => {
+        console.log("Email sent via EmailJS!");
+      }).catch((err) => {
+        console.error("EmailJS Error:", err);
+      });
+
       setSuccess(true);
       setLoading(false);
 
-      // 3. محاولة الإرسال لفايربيس في الخلفية 
+      // 3. Firebase
       addDoc(collection(db, "applications"), {
         ...formData,
         jobTitle: job.title,
@@ -1361,8 +1469,8 @@ function ApplicationPage({ job, onBack, user }) {
         
         <form onSubmit={handleApply} className="space-y-8">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <ApplyField label="Full Name" icon={<User size={20}/>} placeholder="Ahmed Mohamed" value={formData.name} onChange={v => setFormData({...formData, name: v})}/>
-              <ApplyField label="Phone" icon={<Phone size={20}/>} placeholder="01xxxxxxxxx" value={formData.phone} type="tel" onChange={v => setFormData({...formData, phone: v})}/>
+              <ApplyField label="Full Name" icon={<User size={20}/>} placeholder="Ahmed Mohamed" value={formData.name} pattern="^[A-Za-z \u0600-\u06FF]+$" title="Please enter letters only (يرجى إدخال حروف فقط)" onChange={v => setFormData({...formData, name: v})}/>
+              <ApplyField label="Phone" icon={<Phone size={20}/>} placeholder="01xxxxxxxxx" value={formData.phone} type="tel" pattern="^[0-9]+$" title="Please enter numbers only (يرجى إدخال أرقام فقط)" onChange={v => setFormData({...formData, phone: v})}/>
            </div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1389,33 +1497,8 @@ function ApplicationPage({ job, onBack, user }) {
               </div>
             </div>
 
-           <div className="relative group">
-               <input 
-                 type="file" 
-                 id="cv-upload" 
-                 className="hidden" 
-                 accept=".pdf,.doc,.docx"
-                 onChange={(e) => setCvFile(e.target.files[0])}
-               />
-               <label htmlFor="cv-upload" className={`border-2 border-dashed rounded-3xl p-10 text-center flex flex-col items-center justify-center cursor-pointer transition-all ${cvFile ? 'border-green-400 bg-green-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}>
-                 {cvFile ? (
-                     <>
-                       <CheckCircle className="text-green-400 mb-3" size={36}/>
-                       <p className="font-bold text-green-300">{cvFile.name}</p>
-                     </>
-                 ) : (
-                     <>
-                       <Upload className="text-[#C48DFF] mb-3 group-hover:scale-110 transition-transform" size={36}/>
-                       <p className="font-bold text-gray-300">
-                          {user?.cvUrl ? "CV Link via Google Drive is saved" : "Upload CV File (Optional)"}
-                       </p>
-                     </>
-                 )}
-               </label>
-           </div>
-
            <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 text-center space-y-6 shadow-sm">
-            <label className="text-lg font-black block text-[#FF6FA1]">Introduce yourself and record a 2-minute record to determine your level</label>
+            <label className="text-lg font-black block text-[#FF6FA1]">Introduce yourself and record a voice note in English for at least two minutes to determine your level.</label>
             <div className="flex flex-col items-center gap-6">
               {!audioUrl ? (
                 <>
@@ -1426,7 +1509,6 @@ function ApplicationPage({ job, onBack, user }) {
                 </>
               ) : (
                 <div className="w-full space-y-4 animate-in fade-in duration-500">
-                  {/* فلتر invert بيعكس ألوان المشغل عشان يليق مع الدارك مود */}
                   <audio src={audioUrl} controls className="w-full rounded-full shadow-sm outline-none invert opacity-90" />
                   <button type="button" onClick={()=>{setAudioUrl(null); setRecordingTime(0);}} className="text-red-400 text-sm font-bold underline flex items-center gap-1 mx-auto hover:text-red-300">
                     <Trash2 size={16}/> Reset
@@ -1451,7 +1533,6 @@ function ApplicationPage({ job, onBack, user }) {
   );
 }
 
-// --- Helper Components ---
 function JobInfoRow({ icon, label }) {
   return <div className="bg-white/5 border border-white/5 p-3 rounded-2xl flex items-center justify-center gap-2 text-gray-300 font-bold text-sm shadow-sm">{icon} {label}</div>;
 }
@@ -1463,25 +1544,29 @@ function DetailStat({ icon, title, value }) {
   </div>;
 }
 
-function ApplyField({ label, icon, placeholder, onChange, value, type = "text" }) {
+function ApplyField({ label, icon, placeholder, onChange, value, type = "text", required = true, pattern, title }) {
   return (
     <div className="space-y-2 text-left">
-      <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">{label} *</label>
+      <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">
+        {label} {required && "*"}
+      </label>
       <div className="relative">
         <div className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500">{icon}</div>
-        <input type={type} required defaultValue={value} className="w-full bg-white/5 p-5 pr-14 rounded-3xl font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all text-left shadow-sm text-white placeholder:text-gray-500" placeholder={placeholder} onChange={e => onChange(e.target.value)}/>
+        <input type={type} required={required} defaultValue={value} pattern={pattern} title={title} className="w-full bg-white/5 p-5 pr-14 rounded-3xl font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all text-left shadow-sm text-white placeholder:text-gray-500" placeholder={placeholder} onChange={e => onChange(e.target.value)} />
       </div>
     </div>
   );
 }
 
-function ApplySelect({ label, icon, options, onChange, value }) {
+function ApplySelect({ label, icon, options, onChange, value, required = true }) {
   return (
     <div className="space-y-2 text-left">
-      <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">{label} *</label>
+      <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">
+        {label} {required && "*"}
+      </label>
       <div className="relative">
         <div className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500">{icon}</div>
-        <select required defaultValue={value} className="w-full bg-white/5 p-5 pr-14 rounded-3xl font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all shadow-sm text-left appearance-none cursor-pointer text-white" onChange={e => onChange(e.target.value)}>
+        <select required={required} defaultValue={value} className="w-full bg-white/5 p-5 pr-14 rounded-3xl font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all shadow-sm text-left appearance-none cursor-pointer text-white" onChange={e => onChange(e.target.value)}>
           <option className="bg-gray-900" value="">Select Option</option>
           {options.map(o => <option className="bg-gray-900" key={o} value={o}>{o}</option>)}
         </select>
@@ -1498,7 +1583,6 @@ function AdminField({ label, placeholder, value, onChange }) {
     </div>
   );
 }
-
 
 function Footer({ setView }) {
   return (
