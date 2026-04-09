@@ -207,7 +207,7 @@ export default function App() {
           {view === "details" && <JobDetailsView job={selectedJob} onBack={() => setView("jobs")} onApply={() => setView("apply")} />}
           {view === "apply" && <ApplicationPage job={selectedJob} onBack={() => setView("details")} user={currentUser} />}
           {view === "login" && <LoginView onLogin={(user) => { setCurrentUser(user); setView("recommended"); }} availableLanguages={uniqueLanguages} />}
-          {view === "admin" && <AdminPanelView jobs={jobs} onViewJob={(jobId) => { const job = jobs.find(j => j.id === jobId); if (job) { setSelectedJob(job); setView("details"); } else { alert("Error"); } }} />}
+          {view === "admin" && <AdminPanelView jobs={jobs} />}
         </motion.main>
       </AnimatePresence>
       <Footer setView={setView} />
@@ -572,7 +572,7 @@ function JobsListView({ jobs, filters, setFilters, onViewDetails, hideFilters = 
   );
 }
 
-function JobDetailsView({ job, onBack, onApply }) {
+function JobDetailsView({ job, onBack, onApply, isAdminPreview = false }) {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -581,7 +581,7 @@ function JobDetailsView({ job, onBack, onApply }) {
   return (
     <div className="max-w-5xl mx-auto py-10 animate-in fade-in zoom-in duration-300">
       <button onClick={onBack} className="mb-6 flex items-center gap-2 text-gray-400 font-bold hover:text-[#C48DFF] transition-colors">
-        <ArrowLeft size={20} /> Back to Search
+        <ArrowLeft size={20} /> {isAdminPreview ? "Back to Admin Dashboard" : "Back to Search"}
       </button>
 
       <div className="rounded-[3.5rem] overflow-hidden shadow-2xl border border-white/5 backdrop-blur-xl bg-gray-900/50">
@@ -605,9 +605,11 @@ function JobDetailsView({ job, onBack, onApply }) {
                 <DetailStat icon={<Briefcase color={themeColors.accentPurple}/>} title="Experience" value={job.experience} />
                 <DetailStat icon={<Clock className="text-[#FF6FA1]"/>} title="Shift" value={job.shift} />
               </div>
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }} onClick={onApply} className="w-full text-white py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 mt-10 hover:opacity-90 transition-colors border border-white/5" style={{ backgroundColor: themeColors.applyBtn }}>
-                <Send size={20} className="-mt-1"/> Apply Now
-              </motion.button>
+              {!isAdminPreview && (
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }} onClick={onApply} className="w-full text-white py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 mt-10 hover:opacity-90 transition-colors border border-white/5" style={{ backgroundColor: themeColors.applyBtn }}>
+                  <Send size={20} className="-mt-1"/> Apply Now
+                </motion.button>
+              )}
             </div>
           </div>
 
@@ -647,7 +649,7 @@ function JobDetailsView({ job, onBack, onApply }) {
 function RecruiterCandidateForm({ jobs, onAdded }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    jobId: "", name: "", phone: "", age: "", gender: "", status: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: ""
+    jobId: "", name: "", phone: "", age: "", gender: "", education: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: ""
   });
   const [cvFile, setCvFile] = useState(null);
   const [audioFile, setAudioFile] = useState(null);
@@ -694,7 +696,7 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
       sheetData.append('name', formData.name);
       sheetData.append('phone', formData.phone);
       sheetData.append('age', formData.age);
-      sheetData.append('education', formData.status);
+      sheetData.append('education', formData.education);
       sheetData.append('gender', formData.gender);
       sheetData.append('experience', formData.experience);
       sheetData.append('jobTitle', selectedJob.title);
@@ -721,11 +723,7 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
         method: 'POST',
         body: JSON.stringify(emailData),
         headers: { 'Content-Type': 'application/json' }
-      }).then(() => {
-        console.log("Email sent via EmailJS!");
-      }).catch((err) => {
-        console.error("EmailJS Error:", err);
-      });
+      }).catch((err) => console.error("EmailJS Error:", err));
 
       await addDoc(collection(db, "applications"), {
         ...formData,
@@ -737,7 +735,7 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
       });
 
       alert("Candidate added successfully!");
-      setFormData({ jobId: "", name: "", phone: "", age: "", gender: "", status: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: ""});
+      setFormData({ jobId: "", name: "", phone: "", age: "", gender: "", education: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: ""});
       setCvFile(null);
       setAudioFile(null);
       onAdded();
@@ -766,7 +764,7 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
              <ApplyField label="Phone" type="tel" icon={<Phone size={18}/>} placeholder="01xxxxxxxxx" value={formData.phone} onChange={v => setFormData({...formData, phone: v})} pattern="^[0-9]+$" title="Numbers only" required/>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <ApplySelect label="Education Status" icon={<GraduationCap size={18}/>} options={["Student", "Graduate", "Drop-out"]} onChange={v => setFormData({...formData, status: v})} required/>
+             <ApplySelect label="Education Status" icon={<GraduationCap size={18}/>} options={["Student", "Graduate", "Drop-out"]} onChange={v => setFormData({...formData, education: v})} required/>
              <ApplySelect label="Gender" icon={<Users size={18}/>} options={["Male", "Female"]} onChange={v => setFormData({...formData, gender: v})} required/>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -807,7 +805,7 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
   );
 }
 
-function AdminPanelView({ jobs, onViewJob }) {
+function AdminPanelView({ jobs }) {
   const [isAuth, setIsAuth] = useState(false); 
   const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -815,10 +813,10 @@ function AdminPanelView({ jobs, onViewJob }) {
   const [unlockedTabs, setUnlockedTabs] = useState(["recruiter_apps", "add_candidate"]); 
   const [activeTab, setActiveTab] = useState(null); 
   
+  const [adminSelectedJob, setAdminSelectedJob] = useState(null);
   const [pendingTab, setPendingTab] = useState(null);
   const [secPass, setSecPass] = useState("");
   const [showSecPass, setShowSecPass] = useState(false);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [hideRecruiterApps, setHideRecruiterApps] = useState(false);
 
@@ -826,6 +824,8 @@ function AdminPanelView({ jobs, onViewJob }) {
   const [users, setUsers] = useState([]); 
   
   const [editingId, setEditingId] = useState(null);
+  const [editingRecruiter, setEditingRecruiter] = useState({ id: null, name: "" });
+
   const [form, setForm] = useState({ title: "", company: "", location: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "" });
   const [loading, setLoading] = useState(false);
 
@@ -851,20 +851,22 @@ function AdminPanelView({ jobs, onViewJob }) {
 
   const handleRateEnglish = async (appId, level) => {
     try {
-      const appRef = doc(db, "applications", appId);
-      await updateDoc(appRef, { englishLevel: level, validatedAt: serverTimestamp() });
-    } catch (err) {
-      alert("Error updating level: " + err.message);
-    }
+      await updateDoc(doc(db, "applications", appId), { englishLevel: level, validatedAt: serverTimestamp() });
+    } catch (err) { alert("Error updating level: " + err.message); }
   };
 
   const handleAppStatus = async (appId, newStatus) => {
     try {
-      const appRef = doc(db, "applications", appId);
-      await updateDoc(appRef, { status: newStatus, validatedAt: serverTimestamp() });
-    } catch (err) {
-      alert("Error updating status: " + err.message);
-    }
+      await updateDoc(doc(db, "applications", appId), { status: newStatus, validatedAt: serverTimestamp() });
+    } catch (err) { alert("Error updating status: " + err.message); }
+  };
+
+  const handleUpdateRecruiter = async (appId) => {
+    if (!editingRecruiter.name.trim()) return;
+    try {
+      await updateDoc(doc(db, "applications", appId), { hrRecruiterName: editingRecruiter.name });
+      setEditingRecruiter({ id: null, name: "" });
+    } catch(err) { alert("Error updating recruiter: " + err.message); }
   };
 
   const saveJob = async () => {
@@ -874,11 +876,7 @@ function AdminPanelView({ jobs, onViewJob }) {
         await updateDoc(doc(db, "jobs", editingId), { ...form, updatedAt: serverTimestamp() });
         setEditingId(null);
       } else {
-        await addDoc(collection(db, "jobs"), { 
-          ...form, 
-          createdAt: serverTimestamp(),
-          order: jobs.length 
-        });
+        await addDoc(collection(db, "jobs"), { ...form, createdAt: serverTimestamp(), order: jobs.length });
       }
       setForm({ title: "", company: "", location: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "" });
       alert("Job Saved Successfully");
@@ -899,9 +897,7 @@ function AdminPanelView({ jobs, onViewJob }) {
     try {
       await updateDoc(doc(db, "jobs", job1.id), { order: order2 });
       await updateDoc(doc(db, "jobs", job2.id), { order: order1 });
-    } catch (err) {
-      console.error("Error moving job:", err);
-    }
+    } catch (err) { console.error("Error moving job:", err); }
   };
 
   const handleTabClick = (tabName) => {
@@ -951,11 +947,18 @@ function AdminPanelView({ jobs, onViewJob }) {
     </div>
   );
 
+  if (adminSelectedJob) {
+    return (
+      <div className="max-w-7xl mx-auto px-4">
+         <JobDetailsView job={adminSelectedJob} onBack={() => setAdminSelectedJob(null)} isAdminPreview={true} />
+      </div>
+    );
+  }
+
   return (
     <div className="py-10 space-y-10">
       
       <div className="flex flex-col md:flex-row items-center gap-4 mb-10 px-4 flex-wrap w-full bg-black/20 p-4 rounded-[2rem] border border-white/5">
-        
         <div className="flex flex-wrap justify-center gap-4 flex-1">
           <button onClick={() => handleTabClick("applications")} className={`px-6 py-4 rounded-2xl font-bold transition-all shadow-lg border ${activeTab === "applications" || pendingTab === "applications" ? "text-gray-900 border-transparent" : "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10"}`} style={{ backgroundColor: activeTab === "applications" || pendingTab === "applications" ? themeColors.accentPurple : "" }}>Applications ({applications.length})</button>
           <button onClick={() => handleTabClick("recruiter_apps")} className={`px-6 py-4 rounded-2xl font-bold transition-all shadow-lg border ${activeTab === "recruiter_apps" && !pendingTab ? "text-gray-900 border-transparent" : "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10"}`} style={{ backgroundColor: activeTab === "recruiter_apps" && !pendingTab ? themeColors.accentPurple : "" }}>Recruiter Apps ({applications.filter(a => a.hrRecruiterName && a.hrRecruiterName.trim() !== "").length})</button>
@@ -1107,7 +1110,9 @@ function AdminPanelView({ jobs, onViewJob }) {
              
              return (
                <div className="grid grid-cols-1 gap-6">
-                  {displayedApps.map(app => (
+                  {displayedApps.map(app => {
+                    let displayStatus = ['Accepted', 'Rejected'].includes(app.status) ? app.status : 'New';
+                    return (
                     <div key={app.id} className="p-8 rounded-[2.5rem] shadow-sm border border-white/5 relative group hover:shadow-xl transition-all backdrop-blur-md flex flex-col" style={{ backgroundColor: themeColors.glassCardBg }}>
                        
                        <div className="absolute top-8 right-8">
@@ -1125,17 +1130,23 @@ function AdminPanelView({ jobs, onViewJob }) {
 
                        <div className="absolute top-8 left-8">
                           <span className={`px-4 py-1.5 rounded-full text-xs font-bold shadow-sm border ${
-                              app.status === 'Accepted' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                              app.status === 'Rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                              displayStatus === 'Accepted' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                              displayStatus === 'Rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
                               'bg-[#C48DFF]/20 text-[#C48DFF] border-[#C48DFF]/30'
                           }`}>
-                              {app.status || "New"}
+                              {displayStatus}
                           </span>
                        </div>
                        
                        <div className="flex flex-col md:flex-row md:items-center gap-8 mt-12 mb-4">
                           
-                          <div onClick={() => onViewJob(app.jobId)} className="flex items-center gap-4 cursor-pointer hover:bg-white/5 p-2 rounded-3xl transition-all group/profile">
+                          <div 
+                             onClick={() => {
+                               const jobToView = jobs.find(j => j.id === app.jobId);
+                               if(jobToView) setAdminSelectedJob(jobToView);
+                             }} 
+                             className="flex items-center gap-4 cursor-pointer hover:bg-white/5 p-2 rounded-3xl transition-all group/profile"
+                          >
                               <div className="w-16 h-16 rounded-full flex items-center justify-center text-gray-900 font-bold text-2xl transition-colors shadow-md" style={{ backgroundColor: themeColors.accentPurple }}>
                                  {app.name.charAt(0)}
                               </div>
@@ -1153,18 +1164,43 @@ function AdminPanelView({ jobs, onViewJob }) {
                              {activeTab !== "recruiter_apps" && (
                                 <p className="text-gray-300 font-bold flex items-center gap-2"><Phone size={16} className="text-[#C48DFF]"/> {app.phone}</p>
                              )}
-                             <div className="flex gap-4 mt-2 text-sm text-gray-400 flex-wrap">
-                                 {app.age && <span>Age: {app.age}</span>}
-                                 {app.age && <span>•</span>}
-                                 <span>Exp: {app.experience}</span>
-                                 <span>•</span>
-                                 <span>Gender: {app.gender}</span>
+                             
+                             <div className="flex gap-2 mt-2 text-xs text-gray-300 flex-wrap">
+                                 {app.age && <span className="bg-white/5 border border-white/10 px-2 py-1 rounded-md">Age: {app.age}</span>}
+                                 <span className="bg-white/5 border border-white/10 px-2 py-1 rounded-md">Edu: {app.education || (["Student", "Graduate", "Drop-out"].includes(app.status) ? app.status : "N/A")}</span>
+                                 <span className="bg-white/5 border border-white/10 px-2 py-1 rounded-md">Exp: {app.experience}</span>
+                                 <span className="bg-white/5 border border-white/10 px-2 py-1 rounded-md">Gender: {app.gender}</span>
                              </div>
-                             {app.hrRecruiterName && (
-                                <div className="mt-2 text-sm font-bold flex items-center gap-1" style={{ color: themeColors.accentPink }}>
-                                   <User size={14}/> Recruiter: {app.hrRecruiterName}
-                                </div>
-                             )}
+
+                             <div className="mt-3 text-sm font-bold flex items-center gap-2" style={{ color: themeColors.accentPink }}>
+                                <User size={14}/> 
+                                {editingRecruiter.id === app.id ? (
+                                  <div className="flex items-center gap-2">
+                                     <input 
+                                       type="text" 
+                                       value={editingRecruiter.name}
+                                       onChange={e => setEditingRecruiter({ ...editingRecruiter, name: e.target.value })}
+                                       className="bg-black/30 text-white px-2 py-1 rounded outline-none border border-white/20 text-xs w-32"
+                                       placeholder="Recruiter Name"
+                                       autoFocus
+                                     />
+                                     <button onClick={() => handleUpdateRecruiter(app.id)} className="text-green-400 hover:text-green-300"><CheckCircle size={16}/></button>
+                                     <button onClick={() => setEditingRecruiter({ id: null, name: "" })} className="text-red-400 hover:text-red-300"><X size={16}/></button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                     <span>Recruiter: {app.hrRecruiterName || "None"}</span>
+                                     <button 
+                                       onClick={() => setEditingRecruiter({ id: app.id, name: app.hrRecruiterName || "" })} 
+                                       className="text-gray-400 hover:text-white transition-colors"
+                                       title="Edit Recruiter"
+                                     >
+                                       <Edit3 size={14}/>
+                                     </button>
+                                  </div>
+                                )}
+                             </div>
+
                           </div>
                           
                           <div className="w-full md:w-1/3 flex flex-col gap-4">
@@ -1174,7 +1210,6 @@ function AdminPanelView({ jobs, onViewJob }) {
                                        <>
                                          <audio controls src={app.audioUrl} className="w-full h-10 invert opacity-90" />
                                          
-                                         {/* === أزرار النسخ والتحميل مع تعديل امتداد الملف إلى MP3 للتحميل المباشر === */}
                                          <div className="flex gap-4 w-full justify-center mt-2 mb-1">
                                             <button onClick={() => { navigator.clipboard.writeText(app.audioUrl); alert("Audio link copied!"); }} className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-white transition-colors">
                                               <Copy size={14}/> Copy Link
@@ -1183,7 +1218,6 @@ function AdminPanelView({ jobs, onViewJob }) {
                                               <Download size={14}/> Download MP3
                                             </a>
                                          </div>
-                                         {/* ====================================================================== */}
 
                                          <div className="w-full flex items-center gap-2 mt-2">
                                            <Languages size={16} className="text-[#C48DFF]"/>
@@ -1213,19 +1247,19 @@ function AdminPanelView({ jobs, onViewJob }) {
                                    
                                    <div className="w-full flex items-center gap-2 mt-1">
                                      <CheckCircle size={16} className={
-                                        app.status === 'Accepted' ? 'text-green-400' :
-                                        app.status === 'Rejected' ? 'text-red-400' : 'text-gray-500'
+                                        displayStatus === 'Accepted' ? 'text-green-400' :
+                                        displayStatus === 'Rejected' ? 'text-red-400' : 'text-gray-500'
                                      }/>
                                      <select 
                                        disabled={activeTab === "recruiter_apps"}
                                        className={`w-full p-2 rounded-xl text-sm font-bold border border-white/5 outline-none transition-all shadow-sm ${
                                          activeTab === "recruiter_apps" ? "cursor-not-allowed opacity-70 bg-transparent" : "cursor-pointer focus:border-[#C48DFF]"
                                        } ${
-                                         app.status === 'Accepted' ? 'bg-green-500/20 text-green-300 border-green-500/50' :
-                                         app.status === 'Rejected' ? 'bg-red-500/20 text-red-300 border-red-500/50' :
+                                         displayStatus === 'Accepted' ? 'bg-green-500/20 text-green-300 border-green-500/50' :
+                                         displayStatus === 'Rejected' ? 'bg-red-500/20 text-red-300 border-red-500/50' :
                                          'bg-white/5 text-white'
                                        }`}
-                                       value={app.status || "New"}
+                                       value={displayStatus}
                                        onChange={(e) => handleAppStatus(app.id, e.target.value)}
                                      >
                                        <option className="bg-gray-900" value="New">Status: New</option>
@@ -1256,7 +1290,7 @@ function AdminPanelView({ jobs, onViewJob }) {
                        </div>
 
                     </div>
-                  ))}
+                  )})}
                </div>
              );
           })()}
@@ -1320,7 +1354,7 @@ function ApplicationPage({ job, onBack, user }) {
     phone: user?.phone || "", 
     age: "", 
     gender: "", 
-    status: "", 
+    education: "", 
     experience: user?.experience || "",
     hrRecruiterName: "" 
   });
@@ -1368,7 +1402,7 @@ function ApplicationPage({ job, onBack, user }) {
   
   const handleApply = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.phone || !formData.age || !formData.gender || !formData.status || !formData.experience || !audioUrl) {
+    if (!formData.name || !formData.phone || !formData.age || !formData.gender || !formData.education || !formData.experience || !audioUrl) {
       alert("Missing Data / تأكد من إدخال جميع البيانات بما فيها العمر والصوت");
       return;
     }
@@ -1396,7 +1430,7 @@ function ApplicationPage({ job, onBack, user }) {
       sheetData.append('name', formData.name);
       sheetData.append('phone', formData.phone);
       sheetData.append('age', formData.age); 
-      sheetData.append('education', formData.status);
+      sheetData.append('education', formData.education);
       sheetData.append('gender', formData.gender);
       sheetData.append('experience', formData.experience);
       sheetData.append('jobTitle', job.title);
@@ -1474,7 +1508,7 @@ function ApplicationPage({ job, onBack, user }) {
            </div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <ApplySelect label="Education Status" icon={<GraduationCap size={20}/>} options={["Student", "Graduate", "Drop-out"]} onChange={v => setFormData({...formData, status: v})} />
+              <ApplySelect label="Education Status" icon={<GraduationCap size={20}/>} options={["Student", "Graduate", "Drop-out"]} onChange={v => setFormData({...formData, education: v})} />
               <ApplySelect label="Gender" icon={<Users size={20}/>} options={["Male", "Female"]} onChange={v => setFormData({...formData, gender: v})} />
            </div>
 
