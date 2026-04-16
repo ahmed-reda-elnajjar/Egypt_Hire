@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 
-// === استدعاء المكاتب والأيقونات ===
+// === استدعاء المكاتب والأيقونات (تمت إضافة MessageCircle هنا بشكل صحيح) ===
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { 
   Languages, MapPin, Search, Briefcase, Zap, ArrowLeft, Send, Loader2,
   Globe, Instagram, Linkedin, Phone, Mail, DollarSign, Clock, Plus, Eye, EyeOff, Lock, 
   CheckCircle, Trash2, Edit3, User, Upload, LayoutGrid, Mic, StopCircle, GraduationCap, 
   Users, RotateCcw, ExternalLink, FileText, Download, LogIn, LogOut, X, Save, Calendar,
-  Facebook, Video, ArrowUp, ArrowDown, Copy, GripVertical
+  Facebook, Video, ArrowUp, ArrowDown, Copy, GripVertical, MessageCircle
 } from "lucide-react";
 
 // استدعاء اللوجو والصور
@@ -97,7 +97,7 @@ function ApplyField({ label, icon, placeholder, onChange, value, type = "text", 
         <input 
           type={type} 
           required={required} 
-          defaultValue={value} 
+          value={value || ""} 
           pattern={pattern} 
           title={title} 
           className="w-full bg-white/5 p-5 pr-14 rounded-3xl font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all text-left shadow-sm text-white placeholder:text-gray-500" 
@@ -109,7 +109,6 @@ function ApplyField({ label, icon, placeholder, onChange, value, type = "text", 
   );
 }
 
-// مكون القائمة المنسدلة المخصص
 function ApplySelect({ label, icon, options, onChange, value, required = true }) {
   const [isOpen, setIsOpen] = useState(false);
   
@@ -168,14 +167,13 @@ function AdminField({ label, placeholder, value, onChange }) {
       <label className="block text-sm font-bold text-gray-400 mr-2 uppercase tracking-wide">{label}</label>
       <input 
         className="w-full bg-white/5 p-4 rounded-2xl outline-none font-bold text-left shadow-sm border border-white/5 focus:border-[#C48DFF] text-white placeholder:text-gray-600 transition-all" 
-        value={value} 
+        value={value || ""} 
         placeholder={placeholder} 
         onChange={e => onChange(e.target.value)}
       />
     </div>
   );
 }
-
 
 // ==========================================
 // 2. التطبيق الأساسي (App Component)
@@ -318,7 +316,6 @@ export default function App() {
         )}
         <motion.main key={view} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.3 }} className="max-w-7xl mx-auto px-4 py-8 min-h-[70vh]">
           {view === "home" && <HomeView setView={setView} onFastApply={handleFastApply} />}
-          
           {view === "jobs" && <JobsListView jobs={filteredJobs} filters={filters} setFilters={setFilters} onViewDetails={(j) => { setSelectedJob(j); setView("details"); }} locations={uniqueLocations} languages={uniqueLanguages} />}
           {view === "recommended" && <RecommendedJobsView jobs={filteredJobs} user={currentUser} onViewDetails={(j) => { setSelectedJob(j); setView("details"); }} />}
           {view === "details" && <JobDetailsView job={selectedJob} onBack={() => setView("jobs")} onApply={() => setView("apply")} />}
@@ -341,6 +338,7 @@ function UserProfileModal({ user, onClose, onLogout, onUpdate }) {
   const [editForm, setEditForm] = useState({
     name: user.name,
     phone: user.phone,
+    whatsapp: user.whatsapp || "",
     email: user.email,
     language: user.language,
     experience: user.experience
@@ -375,7 +373,10 @@ function UserProfileModal({ user, onClose, onLogout, onUpdate }) {
            {isEditing ? (
              <div className="space-y-4">
                 <AdminField label="Full Name" value={editForm.name} onChange={(v) => setEditForm({...editForm, name: v})} placeholder="Name" />
-                <AdminField label="Phone" value={editForm.phone} onChange={(v) => setEditForm({...editForm, phone: v})} placeholder="Phone" />
+                <div className="grid grid-cols-2 gap-4">
+                  <AdminField label="Phone" value={editForm.phone} onChange={(v) => setEditForm({...editForm, phone: v})} placeholder="Phone" />
+                  <AdminField label="WhatsApp" value={editForm.whatsapp} onChange={(v) => setEditForm({...editForm, whatsapp: v})} placeholder="WhatsApp" />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                    <ApplySelect label="Language" icon={<Languages size={18}/>} value={editForm.language} onChange={(e) => setEditForm({...editForm, language: e})} options={["English", "German", "French", "Italian", "Spanish", "Danish"]} />
                    <ApplySelect label="Experience" icon={<Briefcase size={18}/>} value={editForm.experience} onChange={(e) => setEditForm({...editForm, experience: e})} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} />
@@ -390,6 +391,12 @@ function UserProfileModal({ user, onClose, onLogout, onUpdate }) {
                    <span className="font-bold text-white">{user.phone}</span>
                    <span className="text-gray-400 text-sm"><Phone size={16} className="inline mx-1"/> Phone</span>
                 </div>
+                {user.whatsapp && (
+                  <div className="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-2xl">
+                     <span className="font-bold text-white">{user.whatsapp}</span>
+                     <span className="text-green-400 text-sm"><MessageCircle size={16} className="inline mx-1"/> WhatsApp</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-2xl">
                    <span className="font-bold text-white">{user.language}</span>
                    <span className="text-gray-400 text-sm"><Languages size={16} className="inline mx-1"/> Language</span>
@@ -429,23 +436,11 @@ function HomeView({ setView, onFastApply }) {
   useEffect(() => {
     const playAudio = () => {
       if (isPlaying.current || hasPlayedOnce.current) return;
-
       const audio = new Audio(process.env.PUBLIC_URL + "/welcome.mp3");
       audio.volume = 0.7;
-
-      audio.onplay = () => {
-        isPlaying.current = true;
-        hasPlayedOnce.current = true; 
-      };
-      
-      audio.onended = () => {
-        isPlaying.current = false;
-      };
-
-      audio.onerror = () => {
-        isPlaying.current = false;
-      };
-
+      audio.onplay = () => { isPlaying.current = true; hasPlayedOnce.current = true; };
+      audio.onended = () => { isPlaying.current = false; };
+      audio.onerror = () => { isPlaying.current = false; };
       audio.play().catch((e) => console.log("Audio blocked by browser", e));
     };
 
@@ -469,62 +464,26 @@ function HomeView({ setView, onFastApply }) {
 
   return (
     <div className="space-y-16 text-center w-full">
-      <div
-        className="relative flex flex-col overflow-hidden w-screen shadow-2xl border-b border-white/5"
-        style={{
-          background: "rgba(10,5,20,0.3)",
-          backdropFilter: "blur(8px)",
-          marginLeft: "calc(-50vw + 50%)",
-          marginRight: "calc(-50vw + 50%)",
-          marginTop: "-2rem",
-        }}
-      >
-        <div
-          className="w-full h-[55vh] md:h-[70vh] relative z-0"
-          style={{ overflow: "hidden" }}
-        >
-          <iframe
-            src="https://my.spline.design/nexbotrobotcharacterconcept-sSaWP0eAxb1Ymk4UjUrJVSNp/"
-            frameBorder="0"
-            title="NEXBOT Robot"
-            className="w-full h-full relative z-0"
-            style={{ border: "none" }}
-          />
-          <button
-            onClick={(e) => {
-              e.stopPropagation(); 
-              onFastApply();
-            }}
-            className="absolute bottom-3 right-3 z-30 bg-[#160a2b]/80 backdrop-blur-md text-white px-6 py-3 rounded-2xl font-bold shadow-xl flex items-center gap-2 border border-white/10 hover:bg-black/80 transition-colors"
-          >
-            Fast Apply
-            <Zap size={18} className="text-[#FF6FA1] fill-[#FF6FA1]" />
+      <div className="relative flex flex-col overflow-hidden w-screen shadow-2xl border-b border-white/5" style={{ background: "rgba(10,5,20,0.3)", backdropFilter: "blur(8px)", marginLeft: "calc(-50vw + 50%)", marginRight: "calc(-50vw + 50%)", marginTop: "-2rem" }}>
+        <div className="w-full h-[55vh] md:h-[70vh] relative z-0" style={{ overflow: "hidden" }}>
+          <iframe src="https://my.spline.design/nexbotrobotcharacterconcept-sSaWP0eAxb1Ymk4UjUrJVSNp/" frameBorder="0" title="NEXBOT Robot" className="w-full h-full relative z-0" style={{ border: "none" }} />
+          <button onClick={(e) => { e.stopPropagation(); onFastApply(); }} className="absolute bottom-3 right-3 z-30 bg-[#160a2b]/80 backdrop-blur-md text-white px-6 py-3 rounded-2xl font-bold shadow-xl flex items-center gap-2 border border-white/10 hover:bg-black/80 transition-colors">
+            Fast Apply <Zap size={18} className="text-[#FF6FA1] fill-[#FF6FA1]" />
           </button>
         </div>
 
         <div className="relative z-20 w-full flex flex-col items-center text-center px-6 py-12 md:py-16">
           <div className="flex flex-wrap justify-center gap-4 mb-10">
-            <button
-              onClick={() => setView("jobs")}
-              className="text-gray-900 px-10 py-5 rounded-[2rem] font-bold text-xl flex items-center gap-3 transition-colors hover:opacity-90"
-              style={{ backgroundColor: themeColors.accentPurple }}
-            >
+            <button onClick={() => setView("jobs")} className="text-gray-900 px-10 py-5 rounded-[2rem] font-bold text-xl flex items-center gap-3 transition-colors hover:opacity-90" style={{ backgroundColor: themeColors.accentPurple }}>
               Find Jobs <Search size={22} />
             </button>
-
-            <button
-              onClick={onFastApply}
-              className="bg-black/20 backdrop-blur-md text-white px-10 py-5 rounded-[2rem] font-bold text-xl border border-white/20 shadow-xl flex items-center gap-3 transition-colors hover:bg-white/10"
-            >
-              Fast Apply
-              <Zap size={22} className="text-[#FF6FA1] fill-[#FF6FA1]" />
+            <button onClick={onFastApply} className="bg-black/20 backdrop-blur-md text-white px-10 py-5 rounded-[2rem] font-bold text-xl border border-white/20 shadow-xl flex items-center gap-3 transition-colors hover:bg-white/10">
+              Fast Apply <Zap size={22} className="text-[#FF6FA1] fill-[#FF6FA1]" />
             </button>
           </div>
-
           <h1 className="text-5xl md:text-7xl font-black leading-tight text-white drop-shadow-[0_4px_15px_rgba(0,0,0,1)] max-w-4xl">
             Find your next <span style={{ color: themeColors.accentPurple }}>Call Center</span> Job in Egypt
           </h1>
-
         </div>
       </div>
 
@@ -538,7 +497,7 @@ function HomeView({ setView, onFastApply }) {
 }
 
 function LoginView({ onLogin }) {
-  const [formData, setFormData] = useState({ name: "", email: "", phone: "", language: "", experience: "", cvUrl: "" });
+  const [formData, setFormData] = useState({ name: "", email: "", phone: "", whatsapp: "", language: "", experience: "", cvUrl: "" });
   const [cvFile, setCvFile] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -576,13 +535,13 @@ function LoginView({ onLogin }) {
         
         <form onSubmit={handleSubmit} className="space-y-6 mt-10">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ApplyField label="Full Name" icon={<User size={18}/>} placeholder="Ahmed Mohamed" pattern="^[A-Za-z \u0600-\u06FF]+$" title="Please enter letters only (يرجى إدخال حروف فقط)" onChange={v => setFormData({...formData, name: v})}/>
-              <ApplyField label="Email" type="email" icon={<Mail size={18}/>} placeholder="ahmed@example.com" onChange={v => setFormData({...formData, email: v})}/>
+              <ApplyField label="Full Name" icon={<User size={18}/>} placeholder="Ahmed Mohamed" pattern="^[A-Za-z \u0600-\u06FF]+$" title="Please enter letters only (يرجى إدخال حروف فقط)" value={formData.name} onChange={v => setFormData({...formData, name: v})}/>
+              <ApplyField label="Email" type="email" icon={<Mail size={18}/>} placeholder="ahmed@example.com" value={formData.email} onChange={v => setFormData({...formData, email: v})}/>
            </div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ApplyField label="Phone" type="tel" pattern="^[0-9]+$" title="Please enter numbers only (يرجى إدخال أرقام فقط)" icon={<Phone size={18}/>} placeholder="01xxxxxxxxx" onChange={v => setFormData({...formData, phone: v})}/>
-              <ApplyField label="WhatsApp" type="tel" pattern="^[0-9]+$" title="Please enter numbers only (يرجى إدخال أرقام فقط)" icon={<Phone size={18}/>} placeholder="01xxxxxxxxx" onChange={()=>{}}/> 
+              <ApplyField label="Phone" type="tel" pattern="^[0-9]+$" title="Please enter numbers only (يرجى إدخال أرقام فقط)" icon={<Phone size={18}/>} placeholder="01xxxxxxxxx" value={formData.phone} onChange={v => setFormData({...formData, phone: v})}/>
+              <ApplyField label="WhatsApp" type="tel" pattern="^[0-9]+$" title="Please enter numbers only (يرجى إدخال أرقام فقط)" icon={<MessageCircle size={18}/>} placeholder="01xxxxxxxxx" value={formData.whatsapp} onChange={v => setFormData({...formData, whatsapp: v})}/> 
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -762,6 +721,7 @@ function ApplicationPage({ job, onBack, user }) {
 
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0); 
@@ -769,9 +729,17 @@ function ApplicationPage({ job, onBack, user }) {
   const audioChunks = React.useRef([]);
   const timerRef = React.useRef(null); 
 
+  const [isRecording2, setIsRecording2] = useState(false);
+  const [audioUrl2, setAudioUrl2] = useState(null);
+  const [recordingTime2, setRecordingTime2] = useState(0); 
+  const mediaRecorder2 = React.useRef(null);
+  const audioChunks2 = React.useRef([]);
+  const timerRef2 = React.useRef(null);
+
   const [formData, setFormData] = useState({
     name: user?.name || "", 
     phone: user?.phone || "", 
+    whatsapp: user?.whatsapp || "",
     age: "", 
     gender: "", 
     education: "", 
@@ -807,29 +775,58 @@ function ApplicationPage({ job, onBack, user }) {
 
       timerRef.current = setInterval(() => {
         setRecordingTime((prev) => {
-          if (prev >= 119) { 
-            stopRecording();
-            return 120;
-          }
+          if (prev >= 119) { stopRecording(); return 120; }
           return prev + 1;
         });
       }, 1000);
-
     } catch (err) { alert("Mic required"); }
   };
-
   const stopRecording = () => { if(mediaRecorder.current) mediaRecorder.current.stop(); setIsRecording(false); };
+
+  const startRecording2 = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder2.current = new MediaRecorder(stream);
+      audioChunks2.current = [];
+      mediaRecorder2.current.ondataavailable = (e) => audioChunks2.current.push(e.data);
+      
+      mediaRecorder2.current.onstop = () => {
+        const audioBlob = new Blob(audioChunks2.current, { type: 'audio/wav' });
+        const url = URL.createObjectURL(audioBlob);
+        setAudioUrl2(url);
+        clearInterval(timerRef2.current); 
+      };
+
+      mediaRecorder2.current.start();
+      setIsRecording2(true);
+      setRecordingTime2(0);
+
+      timerRef2.current = setInterval(() => {
+        setRecordingTime2((prev) => {
+          if (prev >= 119) { stopRecording2(); return 120; }
+          return prev + 1;
+        });
+      }, 1000);
+    } catch (err) { alert("Mic required"); }
+  };
+  const stopRecording2 = () => { if(mediaRecorder2.current) mediaRecorder2.current.stop(); setIsRecording2(false); };
   
   const handleApply = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.phone || !formData.age || !formData.gender || !formData.education || !formData.experience || !audioUrl) {
-      alert("Missing Data / تأكد من إدخال جميع البيانات بما فيها العمر والصوت");
+      alert("Missing Data / تأكد من إدخال جميع البيانات بما فيها العمر والصوت الأول");
       return;
     }
+    if (job.requiresSecondRecord && !audioUrl2) {
+      alert("Please record the second audio as required by the job.");
+      return;
+    }
+
     setLoading(true);
     
     try {
       let publicAudioUrl = "";
+      let publicAudioUrl2 = "";
       let publicCvUrl = user?.cvUrl || "";
 
       if (audioUrl) {
@@ -846,6 +843,25 @@ function ApplicationPage({ job, onBack, user }) {
         publicAudioUrl = file.secure_url;
       }
 
+      if (audioUrl2) {
+        const audioBlob2 = await fetch(audioUrl2).then(r => r.blob());
+        const data2 = new FormData();
+        data2.append("file", audioBlob2);
+        data2.append("upload_preset", UPLOAD_PRESET); 
+        data2.append("cloud_name", CLOUD_NAME);
+        data2.append("resource_type", "video");
+
+        const res2 = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: data2 });
+        const file2 = await res2.json();
+        if (file2.error) throw new Error(file2.error.message);
+        publicAudioUrl2 = file2.secure_url;
+      }
+
+      let combinedAudioForSheet = publicAudioUrl;
+      if (publicAudioUrl2) {
+        combinedAudioForSheet = `[Record 1]: ${publicAudioUrl} \n\n[Record 2]: ${publicAudioUrl2}`;
+      }
+
       const sheetData = new FormData();
       sheetData.append('name', formData.name);
       sheetData.append('phone', formData.phone);
@@ -856,14 +872,12 @@ function ApplicationPage({ job, onBack, user }) {
       sheetData.append('jobTitle', job.title);
       sheetData.append('company', job.company);
       sheetData.append('cvUrl', publicCvUrl);
-      sheetData.append('audioUrl', publicAudioUrl);
+      sheetData.append('audioUrl', combinedAudioForSheet);
       sheetData.append('hrRecruiterName', formData.hrRecruiterName); 
       sheetData.append('qaStatus', 'New'); 
 
-      // 1. Google Sheets
       fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' }).catch(e => console.error(e));
       
-      // 2. EmailJS
       const emailData = {
         service_id: 'service_danc0or', 
         template_id: 'template_95u7884', 
@@ -889,12 +903,12 @@ function ApplicationPage({ job, onBack, user }) {
       setSuccess(true);
       setLoading(false);
 
-      // 3. Firebase
       addDoc(collection(db, "applications"), {
         ...formData,
         jobTitle: job.title,
         jobId: job.id,
         audioUrl: publicAudioUrl, 
+        audioUrl2: publicAudioUrl2,
         cvUrl: publicCvUrl,
         status: "New", 
         appliedAt: serverTimestamp(),
@@ -928,33 +942,36 @@ function ApplicationPage({ job, onBack, user }) {
               <ApplyField label="Full Name" icon={<User size={20}/>} placeholder="Ahmed Mohamed" value={formData.name} pattern="^[A-Za-z \u0600-\u06FF]+$" title="Please enter letters only (يرجى إدخال حروف فقط)" onChange={v => setFormData({...formData, name: v})}/>
               <ApplyField label="Phone" icon={<Phone size={20}/>} placeholder="01xxxxxxxxx" value={formData.phone} type="tel" pattern="^[0-9]+$" title="Please enter numbers only (يرجى إدخال أرقام فقط)" onChange={v => setFormData({...formData, phone: v})}/>
            </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <ApplyField label="WhatsApp" icon={<MessageCircle size={20}/>} placeholder="01xxxxxxxxx" value={formData.whatsapp} type="tel" pattern="^[0-9]+$" title="Please enter numbers only" onChange={v => setFormData({...formData, whatsapp: v})}/>
+              <ApplySelect label="Gender" icon={<Users size={20}/>} value={formData.gender} options={["Male", "Female"]} onChange={v => setFormData({...formData, gender: v})} />
+           </div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <ApplySelect label="Education Status" icon={<GraduationCap size={20}/>} value={formData.education} options={["Student", "Graduate", "Drop-out", "Gap Year"]} onChange={v => setFormData({...formData, education: v})} />
-              <ApplySelect label="Gender" icon={<Users size={20}/>} value={formData.gender} options={["Male", "Female"]} onChange={v => setFormData({...formData, gender: v})} />
+              <ApplySelect label="Experience" icon={<Briefcase size={20}/>} value={formData.experience} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} />
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <ApplySelect label="Experience" icon={<Briefcase size={20}/>} value={formData.experience} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} />
              <ApplyField label="Age" icon={<Calendar size={20}/>} placeholder="e.g. 25" value={formData.age} type="number" onChange={v => setFormData({...formData, age: v})}/>
+             <div className="space-y-2 text-left">
+                <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">HR Recruiter Name (Optional)</label>
+                <div className="relative">
+                  <div className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500"><User size={20}/></div>
+                  <input 
+                    type="text" 
+                    value={formData.hrRecruiterName}
+                    placeholder="e.g. Sara Ahmed" 
+                    className="w-full bg-white/5 p-5 pr-14 rounded-3xl font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all text-left shadow-sm text-white placeholder:text-gray-500" 
+                    onChange={e => setFormData({...formData, hrRecruiterName: e.target.value})}
+                  />
+                </div>
+              </div>
            </div>
 
-           <div className="space-y-2 text-left">
-              <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">HR Recruiter Name (Optional)</label>
-              <div className="relative">
-                <div className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500"><User size={20}/></div>
-                <input 
-                  type="text" 
-                  value={formData.hrRecruiterName}
-                  placeholder="e.g. Sara Ahmed" 
-                  className="w-full bg-white/5 p-5 pr-14 rounded-3xl font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all text-left shadow-sm text-white placeholder:text-gray-500" 
-                  onChange={e => setFormData({...formData, hrRecruiterName: e.target.value})}
-                />
-              </div>
-            </div>
-
            <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 text-center space-y-6 shadow-sm">
-            <label className="text-lg font-black block text-[#FF6FA1]">Introduce yourself and record a voice note in English for at least two minutes to determine your level.</label>
+            <label className="text-lg font-black block text-[#FF6FA1]">{job.recordOneLabel || "Introduce yourself and record a voice note in English for at least two minutes to determine your level."}</label>
             <div className="flex flex-col items-center gap-6">
               {!audioUrl ? (
                 <>
@@ -974,6 +991,29 @@ function ApplicationPage({ job, onBack, user }) {
             </div>
           </div>
 
+          {job.requiresSecondRecord && (
+            <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 text-center space-y-6 shadow-sm">
+              <label className="text-lg font-black block text-green-400">{job.recordTwoLabel || "Please record the second required audio."}</label>
+              <div className="flex flex-col items-center gap-6">
+                {!audioUrl2 ? (
+                  <>
+                    {isRecording2 && <div className="text-3xl font-black text-red-500 animate-pulse font-mono drop-shadow-md">{formatTime(recordingTime2)}</div>}
+                    <button type="button" onClick={isRecording2 ? stopRecording2 : startRecording2} className={`w-24 h-24 rounded-full flex items-center justify-center text-gray-900 transition-all shadow-[0_0_20px_rgba(74,222,128,0.4)] ${isRecording2 ? 'bg-red-500 text-white animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.6)]' : 'hover:scale-105'}`} style={{ backgroundColor: isRecording2 ? "" : "#4ade80" }}>
+                      {isRecording2 ? <StopCircle size={40}/> : <Mic size={40}/>}
+                    </button>
+                  </>
+                ) : (
+                  <div className="w-full space-y-4 animate-in fade-in duration-500">
+                    <audio src={audioUrl2} controls className="w-full rounded-full shadow-sm outline-none invert opacity-90" />
+                    <button type="button" onClick={()=>{setAudioUrl2(null); setRecordingTime2(0);}} className="text-red-400 text-sm font-bold underline flex items-center gap-1 mx-auto hover:text-red-300">
+                      <Trash2 size={16}/> Reset
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
            <motion.button 
              whileTap={{ scale: 0.95 }} 
              type="submit" 
@@ -992,22 +1032,30 @@ function ApplicationPage({ job, onBack, user }) {
 function RecruiterCandidateForm({ jobs, onAdded }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    jobId: "", name: "", phone: "", age: "", gender: "", education: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: ""
+    jobId: "", name: "", phone: "", whatsapp: "", age: "", gender: "", education: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: "", audioUrl2: ""
   });
   const [cvFile, setCvFile] = useState(null);
+  
   const [audioFile, setAudioFile] = useState(null);
+  const [audioFile2, setAudioFile2] = useState(null);
 
+  const selectedJob = jobs.find(j => j.id === formData.jobId);
   const scriptUrl = "https://script.google.com/macros/s/AKfycbyFMRbyZSjyp8pXTymYBm2zhw_uoEhbXUEvm4CbxE7o9Fxs2Nf-3aovgry-Qa-DDHf8/exec";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if(!formData.jobId || !formData.name || !formData.phone || (!audioFile && !formData.audioUrl)) {
-       return alert("Please fill all required fields and provide an audio file or link.");
+       return alert("Please fill all required fields and provide the main audio.");
     }
+    if(selectedJob?.requiresSecondRecord && (!audioFile2 && !formData.audioUrl2)) {
+       return alert("This job requires a SECOND audio record.");
+    }
+
     setLoading(true);
     try {
       let finalCvUrl = formData.cvUrl;
       let finalAudioUrl = formData.audioUrl;
+      let finalAudioUrl2 = formData.audioUrl2;
 
       if (cvFile) {
         const cvData = new FormData();
@@ -1033,7 +1081,22 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
         finalAudioUrl = data.secure_url;
       }
 
-      const selectedJob = jobs.find(j => j.id === formData.jobId);
+      if (audioFile2) {
+        const audioData2 = new FormData();
+        audioData2.append("file", audioFile2);
+        audioData2.append("upload_preset", UPLOAD_PRESET);
+        audioData2.append("cloud_name", CLOUD_NAME);
+        audioData2.append("resource_type", "video");
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: audioData2 });
+        const data = await res.json();
+        if(data.error) throw new Error(data.error.message);
+        finalAudioUrl2 = data.secure_url;
+      }
+
+      let combinedAudioForSheet = finalAudioUrl;
+      if (finalAudioUrl2) {
+        combinedAudioForSheet = `[Record 1]: ${finalAudioUrl} \n\n[Record 2]: ${finalAudioUrl2}`;
+      }
 
       const sheetData = new FormData();
       sheetData.append('name', formData.name);
@@ -1045,7 +1108,7 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
       sheetData.append('jobTitle', selectedJob.title);
       sheetData.append('company', selectedJob.company);
       sheetData.append('cvUrl', finalCvUrl);
-      sheetData.append('audioUrl', finalAudioUrl);
+      sheetData.append('audioUrl', combinedAudioForSheet);
       sheetData.append('hrRecruiterName', formData.hrRecruiterName);
       sheetData.append('qaStatus', 'New'); 
 
@@ -1073,6 +1136,7 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
         ...formData,
         cvUrl: finalCvUrl,
         audioUrl: finalAudioUrl,
+        audioUrl2: finalAudioUrl2,
         jobTitle: selectedJob.title,
         jobId: selectedJob.id,
         status: "New", 
@@ -1080,9 +1144,10 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
       });
 
       alert("Candidate added successfully!");
-      setFormData({ jobId: "", name: "", phone: "", age: "", gender: "", education: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: ""});
+      setFormData({ jobId: "", name: "", phone: "", whatsapp: "", age: "", gender: "", education: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: "", audioUrl2: ""});
       setCvFile(null);
       setAudioFile(null);
+      setAudioFile2(null);
       onAdded();
     } catch(err) {
       alert(err.message);
@@ -1109,38 +1174,64 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
              <ApplyField label="Phone" type="tel" icon={<Phone size={18}/>} placeholder="01xxxxxxxxx" value={formData.phone} onChange={v => setFormData({...formData, phone: v})} pattern="^[0-9]+$" title="Numbers only" required/>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <ApplySelect label="Education Status" icon={<GraduationCap size={18}/>} value={formData.education} options={["Student", "Graduate", "Drop-out", "Gap Year"]} onChange={v => setFormData({...formData, education: v})} required/>
+             <ApplyField label="WhatsApp" type="tel" icon={<MessageCircle size={18}/>} placeholder="01xxxxxxxxx" value={formData.whatsapp} onChange={v => setFormData({...formData, whatsapp: v})} pattern="^[0-9]+$" title="Numbers only" required/>
              <ApplySelect label="Gender" icon={<Users size={18}/>} value={formData.gender} options={["Male", "Female"]} onChange={v => setFormData({...formData, gender: v})} required/>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <ApplySelect label="Education Status" icon={<GraduationCap size={18}/>} value={formData.education} options={["Student", "Graduate", "Drop-out", "Gap Year"]} onChange={v => setFormData({...formData, education: v})} required/>
              <ApplySelect label="Experience" icon={<Briefcase size={18}/>} value={formData.experience} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} required/>
-             <ApplyField label="Age" type="number" icon={<Calendar size={18}/>} placeholder="e.g. 25" onChange={v => setFormData({...formData, age: v})} required/>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-black/30 p-8 rounded-[2rem] border border-white/5">
-             <div className="space-y-4 border-b md:border-b-0 md:border-r border-white/5 pb-6 md:pb-0 md:pr-6 text-center md:text-left">
-                <label className="block text-xs font-black text-[#FF6FA1] uppercase tracking-wide">Audio Record (Link or File) *</label>
-                <input type="text" placeholder="Audio Link (e.g. Google Drive)" className="w-full bg-white/5 p-5 rounded-2xl outline-none border border-white/5 focus:border-[#C48DFF] text-white text-sm transition-all" value={formData.audioUrl} onChange={e => setFormData({...formData, audioUrl: e.target.value})}/>
-                <p className="text-center text-gray-500 text-xs font-bold">- OR -</p>
-                <div className="relative">
-                   <input type="file" id="audio-upload-form" accept="audio/*" onChange={e => setAudioFile(e.target.files[0])} className="hidden"/>
-                   <label htmlFor="audio-upload-form" className={`w-full py-4 px-5 rounded-2xl text-sm font-bold flex items-center justify-center cursor-pointer transition-all border ${audioFile ? 'bg-green-500/20 text-green-400 border-green-500/50' : 'bg-[#C48DFF]/10 text-[#C48DFF] border-[#C48DFF]/30 hover:bg-[#C48DFF]/20'}`}>
-                      {audioFile ? `Selected: ${audioFile.name}` : "Upload Audio File"}
-                   </label>
-                </div>
-             </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <ApplyField label="Age" type="number" icon={<Calendar size={18}/>} placeholder="e.g. 25" onChange={v => setFormData({...formData, age: v})} required/>
              <div className="space-y-4 md:pl-2 text-center md:text-left">
                 <label className="block text-xs font-black text-gray-400 uppercase tracking-wide">CV (Link or File) - Optional</label>
-                <input type="text" placeholder="CV Link" className="w-full bg-white/5 p-5 rounded-2xl outline-none border border-white/5 focus:border-white/20 text-white text-sm transition-all" value={formData.cvUrl} onChange={e => setFormData({...formData, cvUrl: e.target.value})}/>
-                <p className="text-center text-gray-500 text-xs font-bold">- OR -</p>
-                <div className="relative">
-                   <input type="file" id="cv-upload-form" accept=".pdf,.doc,.docx" onChange={e => setCvFile(e.target.files[0])} className="hidden"/>
-                   <label htmlFor="cv-upload-form" className={`w-full py-4 px-5 rounded-2xl text-sm font-bold flex items-center justify-center cursor-pointer transition-all border ${cvFile ? 'bg-green-500/20 text-green-400 border-green-500/50' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'}`}>
-                      {cvFile ? `Selected: ${cvFile.name}` : "Upload CV File"}
+                <div className="flex gap-2 items-center">
+                  <input type="text" placeholder="CV Link" className="w-full bg-white/5 p-4 rounded-2xl outline-none border border-white/5 focus:border-white/20 text-white text-sm transition-all" value={formData.cvUrl} onChange={e => setFormData({...formData, cvUrl: e.target.value})}/>
+                  <div className="relative">
+                     <input type="file" id="cv-upload-form" accept=".pdf,.doc,.docx" onChange={e => setCvFile(e.target.files[0])} className="hidden"/>
+                     <label htmlFor="cv-upload-form" className={`w-12 h-12 rounded-2xl flex items-center justify-center cursor-pointer transition-all border ${cvFile ? 'bg-green-500/20 text-green-400 border-green-500/50' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'}`}>
+                        {cvFile ? <CheckCircle size={20}/> : <Upload size={20}/>}
+                     </label>
+                  </div>
+                </div>
+             </div>
+          </div>
+
+          {/* Audio 1 */}
+          <div className="bg-black/30 p-8 rounded-[2rem] border border-white/5">
+             <label className="block text-xs font-black text-[#FF6FA1] uppercase tracking-wide mb-4">
+               First Audio Record (Link or File) * {selectedJob && `— ${selectedJob.recordOneLabel || "Introduce yourself..."}`}
+             </label>
+             <div className="flex flex-col md:flex-row gap-4 items-center">
+                <input type="text" placeholder="Audio Link (e.g. Google Drive)" className="w-full bg-white/5 p-4 rounded-2xl outline-none border border-white/5 focus:border-[#C48DFF] text-white text-sm transition-all" value={formData.audioUrl} onChange={e => setFormData({...formData, audioUrl: e.target.value})}/>
+                <span className="text-gray-500 text-xs font-bold">OR</span>
+                <div className="relative w-full md:w-auto">
+                   <input type="file" id="audio-upload-form" accept="audio/*" onChange={e => setAudioFile(e.target.files[0])} className="hidden"/>
+                   <label htmlFor="audio-upload-form" className={`w-full md:w-48 py-4 px-5 rounded-2xl text-sm font-bold flex items-center justify-center cursor-pointer transition-all border ${audioFile ? 'bg-green-500/20 text-green-400 border-green-500/50' : 'bg-[#C48DFF]/10 text-[#C48DFF] border-[#C48DFF]/30 hover:bg-[#C48DFF]/20'}`}>
+                      {audioFile ? `Selected` : "Upload File"}
                    </label>
                 </div>
              </div>
           </div>
+
+          {/* Audio 2 */}
+          {selectedJob?.requiresSecondRecord && (
+            <div className="bg-black/30 p-8 rounded-[2rem] border border-white/5">
+               <label className="block text-xs font-black text-green-400 uppercase tracking-wide mb-4">
+                 Second Audio Record (Link or File) * {`— ${selectedJob.recordTwoLabel || "Second record required..."}`}
+               </label>
+               <div className="flex flex-col md:flex-row gap-4 items-center">
+                  <input type="text" placeholder="Audio Link (e.g. Google Drive)" className="w-full bg-white/5 p-4 rounded-2xl outline-none border border-white/5 focus:border-green-400 text-white text-sm transition-all" value={formData.audioUrl2} onChange={e => setFormData({...formData, audioUrl2: e.target.value})}/>
+                  <span className="text-gray-500 text-xs font-bold">OR</span>
+                  <div className="relative w-full md:w-auto">
+                     <input type="file" id="audio-upload-form2" accept="audio/*" onChange={e => setAudioFile2(e.target.files[0])} className="hidden"/>
+                     <label htmlFor="audio-upload-form2" className={`w-full md:w-48 py-4 px-5 rounded-2xl text-sm font-bold flex items-center justify-center cursor-pointer transition-all border ${audioFile2 ? 'bg-green-500/20 text-green-400 border-green-500/50' : 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20'}`}>
+                        {audioFile2 ? `Selected` : "Upload File"}
+                     </label>
+                  </div>
+               </div>
+            </div>
+          )}
 
           <button disabled={loading} type="submit" className="w-full text-white py-5 rounded-[2rem] font-bold text-xl flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-[0_10px_30px_rgba(50,150,255,0.3)]" style={{ backgroundColor: themeColors.applyBtn }}>
             {loading ? <Loader2 className="animate-spin"/> : <Send size={24} className="-mt-1"/>} Submit Candidate
@@ -1155,7 +1246,7 @@ function AdminPanelView({ jobs }) {
   const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   
-  const [unlockedTabs, setUnlockedTabs] = useState(["recruiter_apps", "add_candidate"]); 
+  const [unlockedTabs, setUnlockedTabs] = useState([]); 
   const [activeTab, setActiveTab] = useState(null); 
   
   const [adminSelectedJob, setAdminSelectedJob] = useState(null);
@@ -1171,9 +1262,14 @@ function AdminPanelView({ jobs }) {
   const [editingId, setEditingId] = useState(null);
   const [editingRecruiter, setEditingRecruiter] = useState({ id: null, name: "" });
 
-  const [form, setForm] = useState({ title: "", company: "", location: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "" });
+  const [form, setForm] = useState({ 
+    title: "", company: "", location: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "",
+    recordOneLabel: "Introduce yourself and record a voice note in English for at least two minutes to determine your level.",
+    requiresSecondRecord: false,
+    recordTwoLabel: ""
+  });
+  
   const [loading, setLoading] = useState(false);
-
   const [draggedJobIdx, setDraggedJobIdx] = useState(null);
 
   useEffect(() => {
@@ -1225,7 +1321,11 @@ function AdminPanelView({ jobs }) {
       } else {
         await addDoc(collection(db, "jobs"), { ...form, createdAt: serverTimestamp(), order: jobs.length, isHidden: false });
       }
-      setForm({ title: "", company: "", location: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "" });
+      setForm({ 
+        title: "", company: "", location: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "",
+        recordOneLabel: "Introduce yourself and record a voice note in English for at least two minutes to determine your level.",
+        requiresSecondRecord: false, recordTwoLabel: ""
+      });
       alert("Job Saved Successfully");
     } catch (e) { alert(e.message); }
     setLoading(false);
@@ -1262,23 +1362,25 @@ function AdminPanelView({ jobs }) {
   };
 
   const handleUnlockTab = () => {
-    if (secPass === "scoutech") {
-      setUnlockedTabs(prev => [...prev, pendingTab]);
-      setActiveTab(pendingTab);
-      setPendingTab(null);
-      setSecPass("");
-    } else if ((pendingTab === "jobs" || pendingTab === "users") && secPass === "samaltman") {
-      setUnlockedTabs(prev => [...prev, "jobs", "users"]);
-      setActiveTab(pendingTab);
-      setPendingTab(null);
-      setSecPass("");
-    } else if ((pendingTab === "applications" || pendingTab === "add_candidate") && secPass === "rayan") {
-      setUnlockedTabs(prev => [...prev, "applications", "add_candidate"]);
-      setActiveTab(pendingTab);
-      setPendingTab(null);
-      setSecPass("");
-    } else {
-      alert("Wrong Password");
+    if (pendingTab === "jobs" || pendingTab === "users") {
+      if (secPass === "samaltman") {
+        setUnlockedTabs(prev => [...prev, "jobs", "users"]);
+        setActiveTab(pendingTab);
+        setPendingTab(null);
+        setSecPass("");
+      } else { alert("Wrong Password for Management!"); }
+    } else if (pendingTab === "applications") {
+      if (secPass === "rayan") {
+        setUnlockedTabs(prev => [...prev, "applications"]);
+        setActiveTab(pendingTab);
+        setPendingTab(null);
+        setSecPass("");
+      } else { alert("Wrong Password for Applications!"); }
+    } else if (pendingTab === "add_candidate" || pendingTab === "recruiter_apps") {
+        setUnlockedTabs(prev => [...prev, pendingTab]);
+        setActiveTab(pendingTab);
+        setPendingTab(null);
+        setSecPass("");
     }
   };
 
@@ -1288,10 +1390,10 @@ function AdminPanelView({ jobs }) {
         <Lock className="mx-auto mb-6 text-[#C48DFF]" size={48}/>
         <h2 className="text-2xl font-bold mb-8 text-white">Admin Login</h2>
         <div className="relative mb-6">
-           <input type={showPass ? "text" : "password"} onChange={(e)=>setPass(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (pass === "scoutech" ? setIsAuth(true) : alert("Wrong Password"))} className="w-full bg-white/5 p-5 rounded-2xl text-center font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all shadow-sm text-white placeholder:text-gray-500" placeholder="******" />
+           <input type={showPass ? "text" : "password"} onChange={(e)=>setPass(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { if(pass === "scoutech"){ setIsAuth(true); setUnlockedTabs(["recruiter_apps", "add_candidate"]); } else { alert("Wrong Password"); } } }} className="w-full bg-white/5 p-5 rounded-2xl text-center font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all shadow-sm text-white placeholder:text-gray-500" placeholder="******" />
            <button onClick={()=>setShowPass(!showPass)} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors">{showPass ? <EyeOff size={22}/> : <Eye size={22}/>}</button>
         </div>
-        <button onClick={() => { if (pass === "scoutech") { setIsAuth(true); } else { alert("Wrong Password"); } }} className="w-full text-gray-900 py-5 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-all" style={{ backgroundColor: themeColors.accentPurple }}>
+        <button onClick={() => { if (pass === "scoutech") { setIsAuth(true); setUnlockedTabs(["recruiter_apps", "add_candidate"]); } else { alert("Wrong Password"); } }} className="w-full text-gray-900 py-5 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-all" style={{ backgroundColor: themeColors.accentPurple }}>
           Login
         </button>
       </div>
@@ -1381,6 +1483,25 @@ function AdminPanelView({ jobs }) {
                 <AdminField label="Experience" value={form.experience} placeholder="Entry Level" onChange={v => setForm({...form, experience: v})}/>
                 <AdminField label="Shift" value={form.shift} placeholder="Fixed" onChange={v => setForm({...form, shift: v})}/>
               </div>
+
+              {/* === التحكم في الريكوردات (Dynamic Records) === */}
+              <div className="bg-black/30 p-6 rounded-[2rem] border border-white/5 space-y-4">
+                <h4 className="font-black text-[#FF6FA1] flex items-center gap-2"><Mic size={18}/> Audio Records Settings</h4>
+                <AdminField label="First Record Prompt" value={form.recordOneLabel} placeholder="e.g. Introduce yourself in English..." onChange={v => setForm({...form, recordOneLabel: v})}/>
+                
+                <div className="flex items-center gap-3 py-2">
+                   <input type="checkbox" id="reqSec" checked={form.requiresSecondRecord} onChange={e => setForm({...form, requiresSecondRecord: e.target.checked})} className="w-5 h-5 accent-green-500 cursor-pointer"/>
+                   <label htmlFor="reqSec" className="text-sm font-bold text-white cursor-pointer">Requires Second Audio Record?</label>
+                </div>
+
+                {form.requiresSecondRecord && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                    <AdminField label="Second Record Prompt" value={form.recordTwoLabel} placeholder="e.g. Sell me this pen in German..." onChange={v => setForm({...form, recordTwoLabel: v})}/>
+                  </motion.div>
+                )}
+              </div>
+              {/* ========================================= */}
+
               <textarea value={form.description} placeholder="Job Description" className="w-full bg-white/5 p-5 rounded-2xl h-32 outline-none font-bold shadow-sm border border-white/5 focus:border-[#C48DFF] text-white placeholder:text-gray-500 transition-all" onChange={e => setForm({...form, description: e.target.value})}/>
               <textarea value={form.requirements} placeholder="Requirements" className="w-full bg-white/5 p-5 rounded-2xl h-32 outline-none font-bold shadow-sm border border-white/5 focus:border-[#C48DFF] text-white placeholder:text-gray-500 transition-all" onChange={e => setForm({...form, requirements: e.target.value})}/>
               <button disabled={loading} onClick={saveJob} className="w-full text-gray-900 py-5 rounded-2xl font-bold text-xl flex justify-center items-center gap-3 shadow-xl hover:opacity-90 transition-all" style={{ backgroundColor: themeColors.accentPurple }}>
@@ -1533,7 +1654,10 @@ function AdminPanelView({ jobs }) {
 
                           <div className="flex-1 space-y-2 mx-4">
                              {activeTab !== "recruiter_apps" && (
-                                <p className="text-gray-300 font-bold flex items-center gap-2"><Phone size={16} className="text-[#C48DFF]"/> {app.phone}</p>
+                                <div className="space-y-1">
+                                  <p className="text-gray-300 font-bold flex items-center gap-2"><Phone size={16} className="text-[#C48DFF]"/> {app.phone}</p>
+                                  {app.whatsapp && <p className="text-green-400 font-bold flex items-center gap-2"><MessageCircle size={16} className="text-green-400"/> {app.whatsapp}</p>}
+                                </div>
                              )}
                              
                              <div className="flex gap-2 mt-2 text-xs text-gray-300 flex-wrap">
@@ -1579,46 +1703,65 @@ function AdminPanelView({ jobs }) {
                           </div>
                           
                           <div className="w-full md:w-1/3 flex flex-col gap-4">
-                               <div className="bg-white/5 border border-white/5 p-4 rounded-3xl flex flex-col items-center gap-2 shadow-sm">
-                                   <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Evaluation</span>
-                                   {app.audioUrl ? (
-                                       <>
-                                         <audio controls src={app.audioUrl} className="w-full h-10 invert opacity-90" />
-                                         
-                                         <div className="flex gap-4 w-full justify-center mt-2 mb-1">
-                                            <button onClick={() => { navigator.clipboard.writeText(app.audioUrl); alert("Audio link copied!"); }} className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-white transition-colors">
-                                              <Copy size={14}/> Copy Link
-                                            </button>
-                                            <a href={app.audioUrl?.includes("cloudinary.com") ? app.audioUrl.replace("/upload/", "/upload/fl_attachment/").replace(/\.[a-zA-Z0-9]+$/, ".mp3") : app.audioUrl} download={`${app.name.replace(/\s+/g, '_')}_Audio.mp3`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-white transition-colors">
-                                              <Download size={14}/> Download MP3
-                                            </a>
-                                         </div>
+                               <div className="bg-white/5 border border-white/5 p-4 rounded-3xl flex flex-col items-center gap-4 shadow-sm">
+                                   
+                                   {/* Audio 1 */}
+                                   <div className="w-full">
+                                     <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2 text-center">Record 1</span>
+                                     {app.audioUrl ? (
+                                         <>
+                                           <audio controls src={app.audioUrl} className="w-full h-8 invert opacity-90 mb-2" />
+                                           <div className="flex gap-4 w-full justify-center">
+                                              <button onClick={() => { navigator.clipboard.writeText(app.audioUrl); alert("Audio link copied!"); }} className="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-white transition-colors">
+                                                <Copy size={12}/> Copy Link
+                                              </button>
+                                              <a href={app.audioUrl?.includes("cloudinary.com") ? app.audioUrl.replace("/upload/", "/upload/fl_attachment/").replace(/\.[a-zA-Z0-9]+$/, ".mp3") : app.audioUrl} download={`${app.name.replace(/\s+/g, '_')}_Audio1.mp3`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-white transition-colors">
+                                                <Download size={12}/> Download MP3
+                                              </a>
+                                           </div>
+                                         </>
+                                     ) : (
+                                         <span className="text-red-400 text-xs font-bold bg-red-500/10 px-3 py-1 rounded-full border border-red-500/10 block text-center">No Audio</span>
+                                     )}
+                                   </div>
 
-                                         <div className="w-full flex items-center gap-2 mt-2">
-                                           <Languages size={16} className="text-[#C48DFF]"/>
-                                           <select 
-                                             disabled={activeTab === "recruiter_apps"}
-                                             className={`w-full p-2 rounded-xl text-sm font-bold border border-white/5 outline-none transition-all shadow-sm ${
-                                               activeTab === "recruiter_apps" 
-                                               ? "bg-transparent text-gray-500 cursor-not-allowed" 
-                                               : "bg-white/5 text-white cursor-pointer focus:border-[#C48DFF]"
-                                             }`}
-                                             value={app.englishLevel || ""}
-                                             onChange={(e) => handleRateEnglish(app.id, e.target.value)}
-                                           >
-                                             <option className="bg-gray-900" value="" disabled>Rate Level...</option>
-                                             <option className="bg-gray-900" value="A1">A1 (Beginner)</option>
-                                             <option className="bg-gray-900" value="A2">A2 (Elementary)</option>
-                                             <option className="bg-gray-900" value="B1">B1 (Intermediate)</option>
-                                             <option className="bg-gray-900" value="B2">B2 (Upper Interm.)</option>
-                                             <option className="bg-gray-900" value="C1">C1 (Advanced)</option>
-                                             <option className="bg-gray-900" value="C2">C2 (Fluent)</option>
-                                           </select>
-                                         </div>
-                                       </>
-                                   ) : (
-                                       <span className="text-red-400 text-xs font-bold mb-2 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/10">No Audio</span>
+                                   {/* Audio 2 */}
+                                   {app.audioUrl2 && (
+                                     <div className="w-full border-t border-white/5 pt-3">
+                                       <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2 text-center">Record 2</span>
+                                       <audio controls src={app.audioUrl2} className="w-full h-8 invert opacity-90 mb-2" />
+                                       <div className="flex gap-4 w-full justify-center">
+                                          <button onClick={() => { navigator.clipboard.writeText(app.audioUrl2); alert("Audio 2 link copied!"); }} className="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-white transition-colors">
+                                            <Copy size={12}/> Copy Link
+                                          </button>
+                                          <a href={app.audioUrl2?.includes("cloudinary.com") ? app.audioUrl2.replace("/upload/", "/upload/fl_attachment/").replace(/\.[a-zA-Z0-9]+$/, ".mp3") : app.audioUrl2} download={`${app.name.replace(/\s+/g, '_')}_Audio2.mp3`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-white transition-colors">
+                                            <Download size={12}/> Download MP3
+                                          </a>
+                                       </div>
+                                     </div>
                                    )}
+
+                                   <div className="w-full flex items-center gap-2 mt-2 pt-2 border-t border-white/5">
+                                     <Languages size={16} className="text-[#C48DFF]"/>
+                                     <select 
+                                       disabled={activeTab === "recruiter_apps"}
+                                       className={`w-full p-2 rounded-xl text-sm font-bold border border-white/5 outline-none transition-all shadow-sm ${
+                                         activeTab === "recruiter_apps" 
+                                         ? "bg-transparent text-gray-500 cursor-not-allowed" 
+                                         : "bg-white/5 text-white cursor-pointer focus:border-[#C48DFF]"
+                                       }`}
+                                       value={app.englishLevel || ""}
+                                       onChange={(e) => handleRateEnglish(app.id, e.target.value)}
+                                     >
+                                       <option className="bg-gray-900" value="" disabled>Rate Level...</option>
+                                       <option className="bg-gray-900" value="A1">A1 (Beginner)</option>
+                                       <option className="bg-gray-900" value="A2">A2 (Elementary)</option>
+                                       <option className="bg-gray-900" value="B1">B1 (Intermediate)</option>
+                                       <option className="bg-gray-900" value="B2">B2 (Upper Interm.)</option>
+                                       <option className="bg-gray-900" value="C1">C1 (Advanced)</option>
+                                       <option className="bg-gray-900" value="C2">C2 (Fluent)</option>
+                                     </select>
+                                   </div>
                                    
                                    <div className="w-full flex items-center gap-2 mt-1">
                                      <CheckCircle size={16} className={
@@ -1691,7 +1834,8 @@ function AdminPanelView({ jobs }) {
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm font-bold text-gray-300 mt-2">
                        <div className="bg-white/5 border border-white/5 p-2 rounded-xl text-center shadow-sm">📱 {user.phone}</div>
-                       <div className="bg-white/5 border border-white/5 p-2 rounded-xl text-center shadow-sm">🌍 {user.language}</div>
+                       <div className="bg-white/5 border border-white/5 p-2 rounded-xl text-center shadow-sm">💬 {user.whatsapp || "N/A"}</div>
+                       <div className="col-span-2 bg-white/5 border border-white/5 p-2 rounded-xl text-center shadow-sm">🌍 {user.language}</div>
                        <div className="col-span-2 bg-white/5 border border-white/5 p-2 rounded-xl text-center shadow-sm">💼 {user.experience}</div>
                     </div>
                     {user.cvUrl && (
