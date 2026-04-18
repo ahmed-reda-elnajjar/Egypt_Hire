@@ -1182,7 +1182,7 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
              <ApplySelect label="Experience" icon={<Briefcase size={18}/>} value={formData.experience} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} required/>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <ApplyField label="Age" type="number" icon={<Calendar size={18}/>} placeholder="e.g. 25" onChange={v => setFormData({...formData, age: v})} required/>
+            <ApplyField label="Age" type="tel" pattern="^[0-9]+$" title="Please enter numbers only" icon={<Calendar size={18}/>} placeholder="e.g. 25" value={formData.age} onChange={v => setFormData({...formData, age: v})} required/>
              <div className="space-y-4 md:pl-2 text-center md:text-left">
                 <label className="block text-xs font-black text-gray-400 uppercase tracking-wide">CV (Link or File) - Optional</label>
                 <div className="flex gap-2 items-center">
