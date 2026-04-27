@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // === استدعاء المكاتب والأيقونات ===
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
@@ -25,9 +24,6 @@ import { signInAnonymously } from "firebase/auth";
 const CLOUD_NAME = "dvefx5ts8"; 
 const UPLOAD_PRESET = "w1cmaa5s"; 
 
-// مفتاح Gemini
-const GEMINI_API_KEY = "AIzaSyDOzqo-xi130L-prarFj4pr17HDHn65Zz0";
-
 // الإعدادات اللونية 
 const themeColors = {
   mainBgGradient: "linear-gradient(135deg, #49307c 0%, #634b97 40%, #a786c1 70%, #ac9bcc 100%)",
@@ -50,56 +46,6 @@ const formatDateTime = (timestamp) => {
     day: '2-digit', month: 'short', year: 'numeric', 
     hour: '2-digit', minute: '2-digit', hour12: true 
   });
-};
-
-// تحويل الـ Audio Blob إلى Base64
-const blobToBase64 = (blob) => {
-  return new Promise((resolve, _) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result.split(',')[1]);
-    reader.readAsDataURL(blob);
-  });
-};
-
-// إرسال الصوت لـ Gemini للتقييم
-const evaluateEnglishLevel = async (audioUrl) => {
-  try {
-    const mp3Url = audioUrl.includes("cloudinary.com") 
-        ? audioUrl.replace(/\.[a-zA-Z0-9]+$/, ".mp3") 
-        : audioUrl;
-        
-    const response = await fetch(mp3Url);
-    const audioBlob = await response.blob();
-    const base64Audio = await blobToBase64(audioBlob);
-
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    const prompt = `Listen to this audio clip. Evaluate the speaker's English proficiency level according to the CEFR scale. 
-    Strictly reply with ONLY ONE of the following values: A1, A2, B1, B2, C1, C2. 
-    Do not include any other words, punctuation, or explanations. If there is no clear English speech, reply with "Not Rated".`;
-
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          mimeType: "audio/mp3",
-          data: base64Audio
-        }
-      }
-    ]);
-    
-    const level = result.response.text().trim().toUpperCase();
-    const validLevels = ["A1", "A2", "B1", "B2", "C1", "C2"];
-    
-    if (validLevels.includes(level)) {
-      return level;
-    }
-    return "Not Rated";
-  } catch (error) {
-    console.error("Gemini Evaluation Error:", error);
-    return "Not Rated";
-  }
 };
 
 function FeatureCard({ icon, title, desc }) {
@@ -742,7 +688,6 @@ function JobDetailsView({ job, onBack, onApply, isAdminPreview = false }) {
               <p className="text-gray-400 text-xs font-bold mb-8 tracking-widest">JOB OVERVIEW</p>
               <div className="space-y-8">
                 
-                {/* 1. زرار الخريطة بالأنيميشن المضيء والتكبير المعتدل */}
                 <DetailStat icon={<MapPin color={themeColors.accentPurple}/>} title="Location" value={job.location}>
                    {job.locationLink && (
                      <motion.a 
@@ -769,7 +714,6 @@ function JobDetailsView({ job, onBack, onApply, isAdminPreview = false }) {
                 <DetailStat icon={<Clock className="text-[#FF6FA1]"/>} title="Shift" value={job.shift} />
               </div>
 
-              {/* 2. زرار Apply Now بحجم كبير جداً وأنيميشن لامع قوي */}
               {!isAdminPreview && (
                 <motion.button 
                   whileTap={{ scale: 0.95 }} 
@@ -777,7 +721,11 @@ function JobDetailsView({ job, onBack, onApply, isAdminPreview = false }) {
                   className="w-full text-white py-6 rounded-[2rem] font-bold text-2xl flex items-center justify-center gap-3 mt-10 hover:opacity-90 transition-opacity border border-white/5 relative overflow-hidden"
                   animate={{
                     backgroundColor: [themeColors.applyBtn, "#4a9dfc", themeColors.applyBtn], 
-                    
+                    boxShadow: [
+                      "0 10px 30px rgba(50,150,255,0.3)", 
+                      "0 10px 50px rgba(50,150,255,0.8), 0 0 20px rgba(255,255,255,0.4)", 
+                      "0 10px 30px rgba(50,150,255,0.3)" 
+                    ]
                   }}
                   transition={{ duration: 3, ease: "easeInOut", repeat: Infinity }}
                 >
@@ -946,7 +894,7 @@ function ApplicationPage({ job, onBack, user }) {
       let publicAudioUrl2 = "";
       let publicCvUrl = user?.cvUrl || formData.cvUrl || "";
 
-      // 1. رفع الصوت الأول والتقييم
+      // 1. رفع الصوت الأول
       if (audioUrl) {
         const audioBlob = await fetch(audioUrl).then(r => r.blob());
         const data = new FormData();
@@ -958,9 +906,6 @@ function ApplicationPage({ job, onBack, user }) {
         const file = await res.json();
         publicAudioUrl = file.secure_url;
       }
-
-      let aiLevel = "Not Rated";
-      if (publicAudioUrl) aiLevel = await evaluateEnglishLevel(publicAudioUrl);
 
       // 2. رفع الصوت الثاني (اختياري حسب الوظيفة)
       if (audioUrl2) {
@@ -987,7 +932,48 @@ function ApplicationPage({ job, onBack, user }) {
         publicCvUrl = cvJson.secure_url;
       }
 
-      // 4. حفظ البيانات في Firebase و Google Sheets
+      let combinedAudioForSheet = publicAudioUrl;
+      if (publicAudioUrl2) {
+        combinedAudioForSheet = `[Record 1]: ${publicAudioUrl} \n\n[Record 2]: ${publicAudioUrl2}`;
+      }
+
+      const sheetData = new FormData();
+      sheetData.append('name', formData.name);
+      sheetData.append('phone', formData.phone);
+      sheetData.append('age', formData.age || "N/A"); 
+      sheetData.append('education', formData.education);
+      sheetData.append('gender', formData.gender);
+      sheetData.append('experience', formData.experience);
+      sheetData.append('jobTitle', job.title);
+      sheetData.append('company', job.company);
+      sheetData.append('cvUrl', publicCvUrl);
+      sheetData.append('audioUrl', combinedAudioForSheet);
+      sheetData.append('hrRecruiterName', formData.hrRecruiterName); 
+      sheetData.append('email', formData.email || "N/A"); 
+      sheetData.append('nationalId', formData.nationalId || "N/A"); 
+      sheetData.append('qaStatus', 'New'); 
+
+      fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' }).catch(e => console.error(e));
+      
+      const emailData = {
+        service_id: 'service_danc0or', 
+        template_id: 'template_95u7884', 
+        user_id: 'dyEaKTlzW6EAKxNjd', 
+        template_params: {
+          'candidate_name': formData.name,
+          'job_title': job.title,
+          'candidate_phone': formData.phone,
+          'experience': formData.experience
+        }
+      };
+
+      fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        body: JSON.stringify(emailData),
+        headers: { 'Content-Type': 'application/json' }
+      }).catch((err) => console.error("EmailJS Error:", err));
+
+      // 4. حفظ البيانات في Firebase بـ englishLevel "Not Rated"
       await addDoc(collection(db, "applications"), {
         ...formData,
         jobTitle: job.title,
@@ -996,7 +982,7 @@ function ApplicationPage({ job, onBack, user }) {
         audioUrl2: publicAudioUrl2,
         cvUrl: publicCvUrl,
         status: "New", 
-        englishLevel: aiLevel,
+        englishLevel: "Not Rated",
         appliedAt: serverTimestamp(),
       });
 
@@ -1037,7 +1023,7 @@ function ApplicationPage({ job, onBack, user }) {
               <ApplySelect label="Experience" icon={<Briefcase size={20}/>} value={formData.experience} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} />
            </div>
 
-           {/* 1. الحقول الديناميكية (عمر، إيميل، رقم قومي) */}
+           {/* 1. الحقول الديناميكية (تظهر فقط لو الإدمن فعلها) */}
            {(job?.requireAge || job?.requireEmail || job?.requireNationalId) && (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {job?.requireAge && (
@@ -1052,7 +1038,7 @@ function ApplicationPage({ job, onBack, user }) {
              </div>
            )}
 
-           {/* 2. حقل الـ CV الديناميكي */}
+           {/* 2. حقل الـ CV (يظهر فقط لو الإدمن فعله) */}
            {job?.requireCv && (
              <div className="space-y-4 text-left w-full bg-white/5 p-6 rounded-3xl border border-white/5">
                 <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">CV (Link or File) <span className="text-red-400">* Required</span></label>
@@ -1161,10 +1147,6 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
        return alert("Please fill all basic required fields and provide the main audio.");
     }
     
-    // تم إيقاف إجبار الإيميل والرقم القومي للـ HR بناءً على طلبك
-    // if (selectedJob?.requireEmail && !formData.email) return alert("Email is required.");
-    // if (selectedJob?.requireNationalId && !formData.nationalId) return alert("National ID is required.");
-    
     if (selectedJob?.requireCv && !cvFile && !formData.cvUrl) return alert("CV is required for this job.");
 
     if(selectedJob?.requiresSecondRecord && (!audioFile2 && !formData.audioUrl2)) {
@@ -1201,11 +1183,6 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
         finalAudioUrl = data.secure_url;
       }
 
-      let aiEvaluatedLevel = "Not Rated";
-      if (finalAudioUrl) {
-         aiEvaluatedLevel = await evaluateEnglishLevel(finalAudioUrl);
-      }
-
       if (audioFile2) {
         const audioData2 = new FormData();
         audioData2.append("file", audioFile2);
@@ -1226,7 +1203,7 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
       const sheetData = new FormData();
       sheetData.append('name', formData.name);
       sheetData.append('phone', formData.phone);
-      sheetData.append('age', formData.age || "N/A"); // تم السماح بتركه فارغاً
+      sheetData.append('age', formData.age || "N/A"); 
       sheetData.append('education', formData.education);
       sheetData.append('gender', formData.gender);
       sheetData.append('experience', formData.experience);
@@ -1235,8 +1212,8 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
       sheetData.append('cvUrl', finalCvUrl);
       sheetData.append('audioUrl', combinedAudioForSheet);
       sheetData.append('hrRecruiterName', formData.hrRecruiterName);
-      sheetData.append('email', formData.email || "N/A"); // تم السماح بتركه فارغاً
-      sheetData.append('nationalId', formData.nationalId || "N/A"); // تم السماح بتركه فارغاً
+      sheetData.append('email', formData.email || "N/A"); 
+      sheetData.append('nationalId', formData.nationalId || "N/A"); 
       sheetData.append('qaStatus', 'New'); 
 
       fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' }).catch(e=>console.log(e));
@@ -1267,7 +1244,7 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
         jobTitle: selectedJob.title,
         jobId: selectedJob.id,
         status: "New", 
-        englishLevel: aiEvaluatedLevel,
+        englishLevel: "Not Rated",
         appliedAt: serverTimestamp()
       });
 
@@ -1310,7 +1287,6 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
              <ApplySelect label="Experience" icon={<Briefcase size={18}/>} value={formData.experience} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} required/>
           </div>
           
-          {/* تم إزالة شرط الـ required من العمر والإيميل والرقم القومي */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
              <ApplyField label="Age (Optional)" type="tel" pattern="^[0-9]+$" title="Please enter numbers only" icon={<Calendar size={18}/>} placeholder="e.g. 25" value={formData.age} onChange={v => setFormData({...formData, age: v})} required={false}/>
              <ApplyField label="Email (Optional)" type="email" icon={<Mail size={18}/>} placeholder="ahmed@example.com" value={formData.email} onChange={v => setFormData({...formData, email: v})} required={false} />
@@ -1400,7 +1376,7 @@ function AdminPanelView({ jobs }) {
     title: "", company: "", location: "", locationLink: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "",
     recordOneLabel: "Introduce yourself and record a voice note in English for at least two minutes to determine your level.",
     requiresSecondRecord: false, recordTwoLabel: "",
-    requireCv: false, requireNationalId: false, requireEmail: false
+    requireCv: false, requireNationalId: false, requireEmail: false, requireAge: false
   });
   
   const [loading, setLoading] = useState(false);
@@ -1459,7 +1435,7 @@ function AdminPanelView({ jobs }) {
         title: "", company: "", location: "", locationLink: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "",
         recordOneLabel: "Introduce yourself and record a voice note in English for at least two minutes to determine your level.",
         requiresSecondRecord: false, recordTwoLabel: "",
-        requireCv: false, requireNationalId: false, requireEmail: false
+        requireCv: false, requireNationalId: false, requireEmail: false, requireAge: false
       });
       alert("Job Saved Successfully");
     } catch (e) { alert(e.message); }
@@ -1619,16 +1595,14 @@ function AdminPanelView({ jobs }) {
                 <AdminField label="Shift" value={form.shift} placeholder="Fixed" onChange={v => setForm({...form, shift: v})}/>
               </div>
 
-              {/* لينك اللوكيشن الجديد */}
               <AdminField label="Location Link (Google Maps)" value={form.locationLink} placeholder="https://maps.app.goo.gl/..." onChange={v => setForm({...form, locationLink: v})}/>
 
-              {/* === التحكم في الحقول الإجبارية (Dynamic Mandatory Fields) === */}
               <div className="bg-black/30 p-6 rounded-[2rem] border border-white/5 space-y-4 mt-4">
                 <h4 className="font-black text-[#C48DFF] flex items-center gap-2"><FileText size={18}/> Mandatory Fields for Applicants</h4>
-                <div className="flex flex-col md:flex-row gap-6">
+                <div className="flex flex-col md:flex-row flex-wrap gap-6">
                   <label className="flex items-center gap-2 text-sm font-bold text-white cursor-pointer hover:opacity-80 transition-opacity">
-                    <input type="checkbox" checked={form.requireCv} onChange={e => setForm({...form, requireCv: e.target.checked})} className="w-5 h-5 accent-green-500 cursor-pointer"/> 
-                    Require CV Upload
+                    <input type="checkbox" checked={form.requireAge} onChange={e => setForm({...form, requireAge: e.target.checked})} className="w-5 h-5 accent-green-500 cursor-pointer"/> 
+                    Require Age
                   </label>
                   <label className="flex items-center gap-2 text-sm font-bold text-white cursor-pointer hover:opacity-80 transition-opacity">
                     <input type="checkbox" checked={form.requireEmail} onChange={e => setForm({...form, requireEmail: e.target.checked})} className="w-5 h-5 accent-green-500 cursor-pointer"/> 
@@ -1638,10 +1612,13 @@ function AdminPanelView({ jobs }) {
                     <input type="checkbox" checked={form.requireNationalId} onChange={e => setForm({...form, requireNationalId: e.target.checked})} className="w-5 h-5 accent-green-500 cursor-pointer"/> 
                     Require National ID (14 digits)
                   </label>
+                  <label className="flex items-center gap-2 text-sm font-bold text-white cursor-pointer hover:opacity-80 transition-opacity">
+                    <input type="checkbox" checked={form.requireCv} onChange={e => setForm({...form, requireCv: e.target.checked})} className="w-5 h-5 accent-green-500 cursor-pointer"/> 
+                    Require CV Upload
+                  </label>
                 </div>
               </div>
 
-              {/* === التحكم في الريكوردات (Dynamic Records) === */}
               <div className="bg-black/30 p-6 rounded-[2rem] border border-white/5 space-y-4">
                 <h4 className="font-black text-[#FF6FA1] flex items-center gap-2"><Mic size={18}/> Audio Records Settings</h4>
                 <AdminField label="First Record Prompt" value={form.recordOneLabel} placeholder="e.g. Introduce yourself in English..." onChange={v => setForm({...form, recordOneLabel: v})}/>
@@ -1657,7 +1634,6 @@ function AdminPanelView({ jobs }) {
                   </motion.div>
                 )}
               </div>
-              {/* ========================================= */}
 
               <textarea value={form.description} placeholder="Job Description" className="w-full bg-white/5 p-5 rounded-2xl h-32 outline-none font-bold shadow-sm border border-white/5 focus:border-[#C48DFF] text-white placeholder:text-gray-500 transition-all" onChange={e => setForm({...form, description: e.target.value})}/>
               <textarea value={form.requirements} placeholder="Requirements" className="w-full bg-white/5 p-5 rounded-2xl h-32 outline-none font-bold shadow-sm border border-white/5 focus:border-[#C48DFF] text-white placeholder:text-gray-500 transition-all" onChange={e => setForm({...form, requirements: e.target.value})}/>
