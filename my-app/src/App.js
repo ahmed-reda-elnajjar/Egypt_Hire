@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// === استدعاء المكاتب والأيقونات (تمت إضافة MessageCircle هنا بشكل صحيح) ===
+// === استدعاء المكاتب والأيقونات ===
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { 
   Languages, MapPin, Search, Briefcase, Zap, ArrowLeft, Send, Loader2,
   Globe, Instagram, Linkedin, Phone, Mail, DollarSign, Clock, Plus, Eye, EyeOff, Lock, 
   CheckCircle, Trash2, Edit3, User, Upload, LayoutGrid, Mic, StopCircle, GraduationCap, 
   Users, RotateCcw, ExternalLink, FileText, Download, LogIn, LogOut, X, Save, Calendar,
-  Facebook, Video, ArrowUp, ArrowDown, Copy, GripVertical, MessageCircle
+  Facebook, Video, ArrowUp, ArrowDown, Copy, GripVertical, MessageCircle, Map
 } from "lucide-react";
 
 // استدعاء اللوجو والصور
@@ -23,6 +24,9 @@ import { signInAnonymously } from "firebase/auth";
 // Cloudinary Config
 const CLOUD_NAME = "dvefx5ts8"; 
 const UPLOAD_PRESET = "w1cmaa5s"; 
+
+// مفتاح Gemini
+const GEMINI_API_KEY = "AIzaSyDOzqo-xi130L-prarFj4pr17HDHn65Zz0";
 
 // الإعدادات اللونية 
 const themeColors = {
@@ -46,6 +50,56 @@ const formatDateTime = (timestamp) => {
     day: '2-digit', month: 'short', year: 'numeric', 
     hour: '2-digit', minute: '2-digit', hour12: true 
   });
+};
+
+// تحويل الـ Audio Blob إلى Base64
+const blobToBase64 = (blob) => {
+  return new Promise((resolve, _) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+    reader.readAsDataURL(blob);
+  });
+};
+
+// إرسال الصوت لـ Gemini للتقييم
+const evaluateEnglishLevel = async (audioUrl) => {
+  try {
+    const mp3Url = audioUrl.includes("cloudinary.com") 
+        ? audioUrl.replace(/\.[a-zA-Z0-9]+$/, ".mp3") 
+        : audioUrl;
+        
+    const response = await fetch(mp3Url);
+    const audioBlob = await response.blob();
+    const base64Audio = await blobToBase64(audioBlob);
+
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `Listen to this audio clip. Evaluate the speaker's English proficiency level according to the CEFR scale. 
+    Strictly reply with ONLY ONE of the following values: A1, A2, B1, B2, C1, C2. 
+    Do not include any other words, punctuation, or explanations. If there is no clear English speech, reply with "Not Rated".`;
+
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          mimeType: "audio/mp3",
+          data: base64Audio
+        }
+      }
+    ]);
+    
+    const level = result.response.text().trim().toUpperCase();
+    const validLevels = ["A1", "A2", "B1", "B2", "C1", "C2"];
+    
+    if (validLevels.includes(level)) {
+      return level;
+    }
+    return "Not Rated";
+  } catch (error) {
+    console.error("Gemini Evaluation Error:", error);
+    return "Not Rated";
+  }
 };
 
 function FeatureCard({ icon, title, desc }) {
@@ -76,19 +130,21 @@ function JobInfoRow({ icon, label }) {
   );
 }
 
-function DetailStat({ icon, title, value }) {
+function DetailStat({ icon, title, value, children }) {
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center text-center w-full">
       <div className="flex justify-center mb-1">{icon}</div>
       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{title}</p>
       <p className="text-xl font-black text-white leading-tight">{value}</p>
+      {/* هنا هيظهر أي زرار أو محتوى إضافي تحته */}
+      {children}
     </div>
   );
 }
 
 function ApplyField({ label, icon, placeholder, onChange, value, type = "text", required = true, pattern, title }) {
   return (
-    <div className="space-y-2 text-left">
+    <div className="space-y-2 text-left w-full">
       <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">
         {label} {required && "*"}
       </label>
@@ -123,7 +179,7 @@ function ApplySelect({ label, icon, options, onChange, value, required = true })
   }, []);
 
   return (
-    <div className={`space-y-2 text-left custom-select-container relative ${isOpen ? 'z-50' : 'z-10'}`}>
+    <div className={`space-y-2 text-left custom-select-container relative ${isOpen ? 'z-50' : 'z-10'} w-full`}>
       <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">
         {label} {required && "*"}
       </label>
@@ -163,7 +219,7 @@ function ApplySelect({ label, icon, options, onChange, value, required = true })
 
 function AdminField({ label, placeholder, value, onChange }) {
   return (
-    <div className="space-y-2 text-left">
+    <div className="space-y-2 text-left w-full">
       <label className="block text-sm font-bold text-gray-400 mr-2 uppercase tracking-wide">{label}</label>
       <input 
         className="w-full bg-white/5 p-4 rounded-2xl outline-none font-bold text-left shadow-sm border border-white/5 focus:border-[#C48DFF] text-white placeholder:text-gray-600 transition-all" 
@@ -503,6 +559,12 @@ function LoginView({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!formData.language || !formData.experience) {
+      alert("Please select Language and Experience / برجاء اختيار اللغة والخبرة");
+      return;
+    }
+
     setLoading(true);
     try {
        let uploadedCvUrl = formData.cvUrl;
@@ -520,12 +582,23 @@ function LoginView({ onLogin }) {
       
       const userData = { ...formData, cvUrl: uploadedCvUrl, joinedAt: serverTimestamp() };
       
-      const docRef = await addDoc(collection(db, "users"), userData);
-      const userWithId = { ...userData, id: docRef.id };
+      const tempId = "user_" + new Date().getTime();
+      const userWithId = { ...userData, id: tempId };
+      
       localStorage.setItem("egyptHireUser", JSON.stringify(userWithId));
+      
+      addDoc(collection(db, "users"), userData)
+        .then(docRef => {
+          userWithId.id = docRef.id;
+          localStorage.setItem("egyptHireUser", JSON.stringify(userWithId));
+        })
+        .catch(err => console.log("Firebase Error:", err));
+
       onLogin(userWithId);
-    } catch (err) { alert(err.message); }
-    setLoading(false);
+    } catch (err) { 
+      alert(err.message); 
+      setLoading(false); 
+    }
   };
 
   return (
@@ -559,7 +632,7 @@ function LoginView({ onLogin }) {
                   onChange={e => setFormData({...formData, cvUrl: e.target.value})}
                 />
                 <div className="relative">
-                   <input type="file" id="cv-quick" className="hidden" accept=".pdf,.doc" onChange={e => setCvFile(e.target.files[0])} />
+                   <input type="file" id="cv-quick" className="hidden" accept=".pdf,.doc,.docx" onChange={e => setCvFile(e.target.files[0])} />
                    <label htmlFor="cv-quick" className={`h-full px-4 rounded-2xl flex items-center justify-center cursor-pointer transition-all border border-white/10 ${cvFile ? 'bg-[#FF6FA1]/20 text-[#FF6FA1] border-[#FF6FA1]/50' : 'bg-white/5 text-[#C48DFF] hover:bg-white/10'}`}>
                       {cvFile ? <CheckCircle size={20}/> : <Upload size={20}/>}
                    </label>
@@ -668,14 +741,47 @@ function JobDetailsView({ job, onBack, onApply, isAdminPreview = false }) {
             <div className="p-8 rounded-[2.5rem] shadow-xl border border-white/5 text-center relative backdrop-blur-md" style={{ backgroundColor: themeColors.glassFormBg }}>
               <p className="text-gray-400 text-xs font-bold mb-8 tracking-widest">JOB OVERVIEW</p>
               <div className="space-y-8">
-                <DetailStat icon={<MapPin color={themeColors.accentPurple}/>} title="Location" value={job.location} />
+                
+                {/* 1. زرار الخريطة بالأنيميشن المضيء والتكبير المعتدل */}
+                <DetailStat icon={<MapPin color={themeColors.accentPurple}/>} title="Location" value={job.location}>
+                   {job.locationLink && (
+                     <motion.a 
+                       href={job.locationLink} 
+                       target="_blank" 
+                       rel="noreferrer" 
+                       className="mt-4 bg-[#C48DFF]/20 text-[#C48DFF] border border-[#C48DFF]/50 py-2.5 px-6 rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#C48DFF]/30"
+                       animate={{
+                         boxShadow: [
+                           "0 0 10px rgba(196,141,255,0.2)",
+                           "0 0 25px rgba(196,141,255,0.7)",
+                           "0 0 10px rgba(196,141,255,0.2)"
+                         ]
+                       }}
+                       transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                     >
+                       <Map size={18}/> View on Map
+                     </motion.a>
+                   )}
+                </DetailStat>
+
                 <DetailStat icon={<DollarSign className="text-green-400"/>} title="Salary" value={job.salary} />
                 <DetailStat icon={<Briefcase color={themeColors.accentPurple}/>} title="Experience" value={job.experience} />
                 <DetailStat icon={<Clock className="text-[#FF6FA1]"/>} title="Shift" value={job.shift} />
               </div>
+
+              {/* 2. زرار Apply Now بحجم كبير جداً وأنيميشن لامع قوي */}
               {!isAdminPreview && (
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }} onClick={onApply} className="w-full text-white py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 mt-10 hover:opacity-90 transition-colors border border-white/5" style={{ backgroundColor: themeColors.applyBtn }}>
-                  <Send size={20} className="-mt-1"/> Apply Now
+                <motion.button 
+                  whileTap={{ scale: 0.95 }} 
+                  onClick={onApply} 
+                  className="w-full text-white py-6 rounded-[2rem] font-bold text-2xl flex items-center justify-center gap-3 mt-10 hover:opacity-90 transition-opacity border border-white/5 relative overflow-hidden"
+                  animate={{
+                    backgroundColor: [themeColors.applyBtn, "#4a9dfc", themeColors.applyBtn], 
+                    
+                  }}
+                  transition={{ duration: 3, ease: "easeInOut", repeat: Infinity }}
+                >
+                  <Send size={28} className="-mt-1"/> Apply Now
                 </motion.button>
               )}
             </div>
@@ -736,15 +842,20 @@ function ApplicationPage({ job, onBack, user }) {
   const audioChunks2 = React.useRef([]);
   const timerRef2 = React.useRef(null);
 
+  const [cvFile, setCvFile] = useState(null);
+
   const [formData, setFormData] = useState({
     name: user?.name || "", 
     phone: user?.phone || "", 
     whatsapp: user?.whatsapp || "",
+    email: user?.email || "",
+    nationalId: "",
     age: "", 
     gender: "", 
     education: "", 
     experience: user?.experience || "",
-    hrRecruiterName: "" 
+    hrRecruiterName: "",
+    cvUrl: ""
   });
 
   const scriptUrl = "https://script.google.com/macros/s/AKfycbyFMRbyZSjyp8pXTymYBm2zhw_uoEhbXUEvm4CbxE7o9Fxs2Nf-3aovgry-Qa-DDHf8/exec";
@@ -809,26 +920,33 @@ function ApplicationPage({ job, onBack, user }) {
       }, 1000);
     } catch (err) { alert("Mic required"); }
   };
-  const stopRecording2 = () => { if(mediaRecorder2.current) mediaRecorder2.current.stop(); setIsRecording2(false); };
+  const stopRecording2 = () => { if(mediaRecorder2.current) mediaRecorder2.current.stop(); setIsRecording(false); };
   
   const handleApply = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.phone || !formData.age || !formData.gender || !formData.education || !formData.experience || !audioUrl) {
-      alert("Missing Data / تأكد من إدخال جميع البيانات بما فيها العمر والصوت الأول");
+    if (!formData.name || !formData.phone || !formData.gender || !formData.education || !formData.experience || !audioUrl) {
+      alert("Missing Data / تأكد من إدخال جميع البيانات الأساسية والصوت الأول");
       return;
     }
+    
+    // التحقق الديناميكي من الحقول الإجبارية
+    if (job.requireAge && !formData.age) { alert("Age is required for this job."); return; }
+    if (job.requireEmail && !formData.email) { alert("Email is required for this job."); return; }
+    if (job.requireNationalId && !formData.nationalId) { alert("National ID is required for this job."); return; }
+    if (job.requireCv && !cvFile && !formData.cvUrl && !user?.cvUrl) { alert("CV is required for this job."); return; }
+
     if (job.requiresSecondRecord && !audioUrl2) {
       alert("Please record the second audio as required by the job.");
       return;
     }
 
     setLoading(true);
-    
     try {
       let publicAudioUrl = "";
       let publicAudioUrl2 = "";
-      let publicCvUrl = user?.cvUrl || "";
+      let publicCvUrl = user?.cvUrl || formData.cvUrl || "";
 
+      // 1. رفع الصوت الأول والتقييم
       if (audioUrl) {
         const audioBlob = await fetch(audioUrl).then(r => r.blob());
         const data = new FormData();
@@ -836,13 +954,15 @@ function ApplicationPage({ job, onBack, user }) {
         data.append("upload_preset", UPLOAD_PRESET); 
         data.append("cloud_name", CLOUD_NAME);
         data.append("resource_type", "video");
-
         const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: data });
         const file = await res.json();
-        if (file.error) throw new Error(file.error.message);
         publicAudioUrl = file.secure_url;
       }
 
+      let aiLevel = "Not Rated";
+      if (publicAudioUrl) aiLevel = await evaluateEnglishLevel(publicAudioUrl);
+
+      // 2. رفع الصوت الثاني (اختياري حسب الوظيفة)
       if (audioUrl2) {
         const audioBlob2 = await fetch(audioUrl2).then(r => r.blob());
         const data2 = new FormData();
@@ -850,60 +970,25 @@ function ApplicationPage({ job, onBack, user }) {
         data2.append("upload_preset", UPLOAD_PRESET); 
         data2.append("cloud_name", CLOUD_NAME);
         data2.append("resource_type", "video");
-
         const res2 = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: data2 });
         const file2 = await res2.json();
-        if (file2.error) throw new Error(file2.error.message);
         publicAudioUrl2 = file2.secure_url;
       }
 
-      let combinedAudioForSheet = publicAudioUrl;
-      if (publicAudioUrl2) {
-        combinedAudioForSheet = `[Record 1]: ${publicAudioUrl} \n\n[Record 2]: ${publicAudioUrl2}`;
+      // 3. رفع ملف الـ CV
+      if (cvFile) {
+        const cvData = new FormData();
+        cvData.append("file", cvFile);
+        cvData.append("upload_preset", UPLOAD_PRESET);
+        cvData.append("cloud_name", CLOUD_NAME);
+        cvData.append("resource_type", "auto"); 
+        const cvRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: cvData });
+        const cvJson = await cvRes.json();
+        publicCvUrl = cvJson.secure_url;
       }
 
-      const sheetData = new FormData();
-      sheetData.append('name', formData.name);
-      sheetData.append('phone', formData.phone);
-      sheetData.append('age', formData.age); 
-      sheetData.append('education', formData.education);
-      sheetData.append('gender', formData.gender);
-      sheetData.append('experience', formData.experience);
-      sheetData.append('jobTitle', job.title);
-      sheetData.append('company', job.company);
-      sheetData.append('cvUrl', publicCvUrl);
-      sheetData.append('audioUrl', combinedAudioForSheet);
-      sheetData.append('hrRecruiterName', formData.hrRecruiterName); 
-      sheetData.append('qaStatus', 'New'); 
-
-      fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' }).catch(e => console.error(e));
-      
-      const emailData = {
-        service_id: 'service_danc0or', 
-        template_id: 'template_95u7884', 
-        user_id: 'dyEaKTlzW6EAKxNjd', 
-        template_params: {
-          'candidate_name': formData.name,
-          'job_title': job.title,
-          'candidate_phone': formData.phone,
-          'experience': formData.experience
-        }
-      };
-
-      fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        body: JSON.stringify(emailData),
-        headers: { 'Content-Type': 'application/json' }
-      }).then(() => {
-        console.log("Email sent via EmailJS!");
-      }).catch((err) => {
-        console.error("EmailJS Error:", err);
-      });
-
-      setSuccess(true);
-      setLoading(false);
-
-      addDoc(collection(db, "applications"), {
+      // 4. حفظ البيانات في Firebase و Google Sheets
+      await addDoc(collection(db, "applications"), {
         ...formData,
         jobTitle: job.title,
         jobId: job.id,
@@ -911,20 +996,19 @@ function ApplicationPage({ job, onBack, user }) {
         audioUrl2: publicAudioUrl2,
         cvUrl: publicCvUrl,
         status: "New", 
+        englishLevel: aiLevel,
         appliedAt: serverTimestamp(),
-      }).catch(err => console.log("Firebase is paused"));
+      });
 
-    } catch (err) { 
-      alert(err.message); 
-      setLoading(false);
-    }
+      setSuccess(true);
+    } catch (err) { alert(err.message); }
+    setLoading(false);
   };
 
   if (success) return (
     <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="py-20 text-center rounded-[3rem] shadow-xl p-12 max-w-lg mx-auto border border-white/5 backdrop-blur-md" style={{ backgroundColor: themeColors.glassFormBg }}>
       <CheckCircle size={60} className="text-green-400 mx-auto mb-6 drop-shadow-md"/>
       <h2 className="text-3xl font-black mb-4 text-white">Application Sent Successfully!</h2>
-      <p className="text-gray-300 font-bold mb-8 italic">Our HR team will contact you soon.</p>
       <button onClick={() => window.location.reload()} className="w-full text-white py-4 rounded-2xl font-bold shadow-lg hover:opacity-90 transition-all" style={{ backgroundColor: themeColors.applyBtn }}>Back to Home</button>
     </motion.div>
   );
@@ -939,89 +1023,119 @@ function ApplicationPage({ job, onBack, user }) {
         
         <form onSubmit={handleApply} className="space-y-8">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <ApplyField label="Full Name" icon={<User size={20}/>} placeholder="Ahmed Mohamed" value={formData.name} pattern="^[A-Za-z \u0600-\u06FF]+$" title="Please enter letters only (يرجى إدخال حروف فقط)" onChange={v => setFormData({...formData, name: v})}/>
-              <ApplyField label="Phone" icon={<Phone size={20}/>} placeholder="01xxxxxxxxx" value={formData.phone} type="tel" pattern="^[0-9]+$" title="Please enter numbers only (يرجى إدخال أرقام فقط)" onChange={v => setFormData({...formData, phone: v})}/>
+              <ApplyField label="Full Name" icon={<User size={20}/>} placeholder="Ahmed Mohamed" value={formData.name} pattern="^[A-Za-z \u0600-\u06FF]+$" title="Letters only" onChange={v => setFormData({...formData, name: v})}/>
+              <ApplyField label="Phone" icon={<Phone size={20}/>} placeholder="01xxxxxxxxx" value={formData.phone} type="tel" pattern="^[0-9]+$" title="Numbers only" onChange={v => setFormData({...formData, phone: v})}/>
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <ApplyField label="WhatsApp" icon={<MessageCircle size={20}/>} placeholder="01xxxxxxxxx" value={formData.whatsapp} type="tel" pattern="^[0-9]+$" title="Please enter numbers only" onChange={v => setFormData({...formData, whatsapp: v})}/>
+              <ApplyField label="WhatsApp" icon={<MessageCircle size={20}/>} placeholder="01xxxxxxxxx" value={formData.whatsapp} type="tel" pattern="^[0-9]+$" onChange={v => setFormData({...formData, whatsapp: v})}/>
               <ApplySelect label="Gender" icon={<Users size={20}/>} value={formData.gender} options={["Male", "Female"]} onChange={v => setFormData({...formData, gender: v})} />
            </div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <ApplySelect label="Education Status" icon={<GraduationCap size={20}/>} value={formData.education} options={["Student", "Graduate", "Drop-out", "Gap Year"]} onChange={v => setFormData({...formData, education: v})} />
+              <ApplySelect label="Education" icon={<GraduationCap size={20}/>} value={formData.education} options={["Student", "Graduate", "Drop-out", "Gap Year"]} onChange={v => setFormData({...formData, education: v})} />
               <ApplySelect label="Experience" icon={<Briefcase size={20}/>} value={formData.experience} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} />
            </div>
 
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <ApplyField label="Age" icon={<Calendar size={20}/>} placeholder="e.g. 25" value={formData.age} type="number" onChange={v => setFormData({...formData, age: v})}/>
-             <div className="space-y-2 text-left">
-                <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">HR Recruiter Name (Optional)</label>
-                <div className="relative">
-                  <div className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500"><User size={20}/></div>
-                  <input 
-                    type="text" 
-                    value={formData.hrRecruiterName}
-                    placeholder="e.g. Sara Ahmed" 
-                    className="w-full bg-white/5 p-5 pr-14 rounded-3xl font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all text-left shadow-sm text-white placeholder:text-gray-500" 
-                    onChange={e => setFormData({...formData, hrRecruiterName: e.target.value})}
-                  />
-                </div>
-              </div>
-           </div>
+           {/* 1. الحقول الديناميكية (عمر، إيميل، رقم قومي) */}
+           {(job?.requireAge || job?.requireEmail || job?.requireNationalId) && (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {job?.requireAge && (
+                  <ApplyField label="Age" icon={<Calendar size={20}/>} placeholder="e.g. 25" value={formData.age} type="number" onChange={v => setFormData({...formData, age: v})} required={true}/>
+                )}
+                {job?.requireEmail && (
+                  <ApplyField label="Email" type="email" icon={<Mail size={20}/>} placeholder="ahmed@example.com" value={formData.email} onChange={v => setFormData({...formData, email: v})} required={true} />
+                )}
+                {job?.requireNationalId && (
+                  <ApplyField label="National ID" type="text" pattern="^[0-9]{14}$" title="Must be exactly 14 digits" icon={<FileText size={20}/>} placeholder="2990101..." value={formData.nationalId} onChange={v => setFormData({...formData, nationalId: v})} required={true} />
+                )}
+             </div>
+           )}
 
-           <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 text-center space-y-6 shadow-sm">
-            <label className="text-lg font-black block text-[#FF6FA1]">{job.recordOneLabel || "Introduce yourself and record a voice note in English for at least two minutes to determine your level."}</label>
+           {/* 2. حقل الـ CV الديناميكي */}
+           {job?.requireCv && (
+             <div className="space-y-4 text-left w-full bg-white/5 p-6 rounded-3xl border border-white/5">
+                <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">CV (Link or File) <span className="text-red-400">* Required</span></label>
+                <div className="flex flex-col md:flex-row gap-4 items-center">
+                  <input type="text" placeholder="CV Link" className="w-full bg-white/5 p-4 rounded-2xl outline-none border border-white/5 focus:border-[#C48DFF] text-white text-sm transition-all" value={formData.cvUrl} onChange={e => setFormData({...formData, cvUrl: e.target.value})}/>
+                  <span className="text-gray-500 text-xs font-bold">OR</span>
+                  <div className="relative w-full md:w-auto">
+                     <input type="file" id="cv-upload-app" accept=".pdf,.doc,.docx" onChange={e => setCvFile(e.target.files[0])} className="hidden"/>
+                     <label htmlFor="cv-upload-app" className={`w-full md:w-48 py-4 px-5 rounded-2xl text-sm font-bold flex items-center justify-center cursor-pointer transition-all border ${cvFile ? 'bg-green-500/20 text-green-400 border-green-500/50' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'}`}>
+                        {cvFile ? <><CheckCircle size={18} className="mr-2"/> Selected</> : <><Upload size={18} className="mr-2"/> Upload File</>}
+                     </label>
+                  </div>
+                </div>
+             </div>
+           )}
+
+           {/* 3. اسم الـ HR (اختياري دائماً) */}
+           <div className="space-y-2 text-left w-full">
+              <label className="block text-xs font-black text-gray-400 uppercase mr-2 tracking-wide">HR Recruiter Name (Optional)</label>
+              <div className="relative">
+                <div className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500"><User size={20}/></div>
+                <input type="text" value={formData.hrRecruiterName} placeholder="e.g. Sara Ahmed" className="w-full bg-white/5 p-5 pr-14 rounded-3xl font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] transition-all text-left shadow-sm text-white placeholder:text-gray-500" onChange={e => setFormData({...formData, hrRecruiterName: e.target.value})} />
+              </div>
+            </div>
+
+           {/* 4. التسجيل الصوتي */}
+           <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 text-center space-y-6">
+            <label className="text-lg font-black block text-[#FF6FA1]">{job.recordOneLabel || "Introduce yourself in English..."}</label>
             <div className="flex flex-col items-center gap-6">
               {!audioUrl ? (
                 <>
-                  {isRecording && <div className="text-3xl font-black text-red-500 animate-pulse font-mono drop-shadow-md">{formatTime(recordingTime)}</div>}
-                  <button type="button" onClick={isRecording ? stopRecording : startRecording} className={`w-24 h-24 rounded-full flex items-center justify-center text-gray-900 transition-all shadow-[0_0_20px_rgba(196,141,255,0.4)] ${isRecording ? 'bg-red-500 text-white animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.6)]' : 'hover:scale-105'}`} style={{ backgroundColor: isRecording ? "" : themeColors.accentPurple }}>
+                  {isRecording && <div className="text-3xl font-black text-red-500 animate-pulse font-mono">{formatTime(recordingTime)}</div>}
+                  <button type="button" onClick={isRecording ? stopRecording : startRecording} className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-[#c184ff]'}`}>
                     {isRecording ? <StopCircle size={40}/> : <Mic size={40}/>}
                   </button>
                 </>
               ) : (
-                <div className="w-full space-y-4 animate-in fade-in duration-500">
-                  <audio src={audioUrl} controls className="w-full rounded-full shadow-sm outline-none invert opacity-90" />
-                  <button type="button" onClick={()=>{setAudioUrl(null); setRecordingTime(0);}} className="text-red-400 text-sm font-bold underline flex items-center gap-1 mx-auto hover:text-red-300">
-                    <Trash2 size={16}/> Reset
-                  </button>
+                <div className="w-full space-y-4 animate-in fade-in">
+                  <audio src={audioUrl} controls className="w-full invert opacity-90" />
+                  <button type="button" onClick={()=>{setAudioUrl(null); setRecordingTime(0);}} className="text-red-400 text-sm font-bold underline flex items-center gap-1 mx-auto"><Trash2 size={16}/> Reset</button>
                 </div>
               )}
             </div>
           </div>
 
           {job.requiresSecondRecord && (
-            <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 text-center space-y-6 shadow-sm">
-              <label className="text-lg font-black block text-green-400">{job.recordTwoLabel || "Please record the second required audio."}</label>
+            <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 text-center space-y-6">
+              <label className="text-lg font-black block text-green-400">{job.recordTwoLabel || "Second record required..."}</label>
               <div className="flex flex-col items-center gap-6">
                 {!audioUrl2 ? (
                   <>
-                    {isRecording2 && <div className="text-3xl font-black text-red-500 animate-pulse font-mono drop-shadow-md">{formatTime(recordingTime2)}</div>}
-                    <button type="button" onClick={isRecording2 ? stopRecording2 : startRecording2} className={`w-24 h-24 rounded-full flex items-center justify-center text-gray-900 transition-all shadow-[0_0_20px_rgba(74,222,128,0.4)] ${isRecording2 ? 'bg-red-500 text-white animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.6)]' : 'hover:scale-105'}`} style={{ backgroundColor: isRecording2 ? "" : "#4ade80" }}>
+                    {isRecording2 && <div className="text-3xl font-black text-red-500 animate-pulse font-mono">{formatTime(recordingTime2)}</div>}
+                    <button type="button" onClick={isRecording2 ? stopRecording2 : startRecording2} className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${isRecording2 ? 'bg-red-500 text-white animate-pulse' : 'bg-[#4ade80]'}`}>
                       {isRecording2 ? <StopCircle size={40}/> : <Mic size={40}/>}
                     </button>
                   </>
                 ) : (
-                  <div className="w-full space-y-4 animate-in fade-in duration-500">
-                    <audio src={audioUrl2} controls className="w-full rounded-full shadow-sm outline-none invert opacity-90" />
-                    <button type="button" onClick={()=>{setAudioUrl2(null); setRecordingTime2(0);}} className="text-red-400 text-sm font-bold underline flex items-center gap-1 mx-auto hover:text-red-300">
-                      <Trash2 size={16}/> Reset
-                    </button>
+                  <div className="w-full space-y-4 animate-in fade-in">
+                    <audio src={audioUrl2} controls className="w-full invert opacity-90" />
+                    <button type="button" onClick={()=>{setAudioUrl2(null); setRecordingTime2(0);}} className="text-red-400 text-sm font-bold underline flex items-center gap-1 mx-auto"><Trash2 size={16}/> Reset</button>
                   </div>
                 )}
               </div>
             </div>
           )}
 
+           {/* 5. زرار الإرسال النهائي اللامع والكبير */}
            <motion.button 
              whileTap={{ scale: 0.95 }} 
              type="submit" 
              disabled={loading} 
-             className="w-full text-white py-5 rounded-[2rem] font-bold text-2xl flex justify-center items-center gap-3 shadow-[0_10px_30px_rgba(50,150,255,0.3)] hover:shadow-[0_10px_40px_rgba(50,150,255,0.5)] hover:opacity-90 transition-all disabled:bg-gray-700 disabled:shadow-none"
-             style={{ backgroundColor: themeColors.applyBtn }} 
+             className="w-full text-white py-6 rounded-[2rem] font-bold text-3xl flex justify-center items-center gap-4 hover:opacity-90 transition-opacity disabled:bg-gray-700 relative overflow-hidden mt-10"
+             animate={{
+               backgroundColor: ["#1e7ede", "#4a9dfc", "#1e7ede"], 
+               boxShadow: [
+                 "0 10px 30px rgba(50,150,255,0.3)", 
+                 "0 10px 50px rgba(50,150,255,0.8), 0 0 20px rgba(255,255,255,0.4)", 
+                 "0 10px 30px rgba(50,150,255,0.3)" 
+               ]
+             }}
+             transition={{ duration: 3, ease: "easeInOut", repeat: Infinity }}
            >
-             {loading ? <Loader2 className="animate-spin"/> : <><Send size={28} className="-mt-1"/> Submit Application</>}
+             {loading ? <Loader2 className="animate-spin"/> : <><Send size={32} className="-mt-1"/> Submit Application</>}
            </motion.button>
         </form>
       </div>
@@ -1032,10 +1146,9 @@ function ApplicationPage({ job, onBack, user }) {
 function RecruiterCandidateForm({ jobs, onAdded }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    jobId: "", name: "", phone: "", whatsapp: "", age: "", gender: "", education: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: "", audioUrl2: ""
+    jobId: "", name: "", phone: "", whatsapp: "", age: "", gender: "", education: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: "", audioUrl2: "", email: "", nationalId: ""
   });
   const [cvFile, setCvFile] = useState(null);
-  
   const [audioFile, setAudioFile] = useState(null);
   const [audioFile2, setAudioFile2] = useState(null);
 
@@ -1045,8 +1158,15 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if(!formData.jobId || !formData.name || !formData.phone || (!audioFile && !formData.audioUrl)) {
-       return alert("Please fill all required fields and provide the main audio.");
+       return alert("Please fill all basic required fields and provide the main audio.");
     }
+    
+    // تم إيقاف إجبار الإيميل والرقم القومي للـ HR بناءً على طلبك
+    // if (selectedJob?.requireEmail && !formData.email) return alert("Email is required.");
+    // if (selectedJob?.requireNationalId && !formData.nationalId) return alert("National ID is required.");
+    
+    if (selectedJob?.requireCv && !cvFile && !formData.cvUrl) return alert("CV is required for this job.");
+
     if(selectedJob?.requiresSecondRecord && (!audioFile2 && !formData.audioUrl2)) {
        return alert("This job requires a SECOND audio record.");
     }
@@ -1081,6 +1201,11 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
         finalAudioUrl = data.secure_url;
       }
 
+      let aiEvaluatedLevel = "Not Rated";
+      if (finalAudioUrl) {
+         aiEvaluatedLevel = await evaluateEnglishLevel(finalAudioUrl);
+      }
+
       if (audioFile2) {
         const audioData2 = new FormData();
         audioData2.append("file", audioFile2);
@@ -1101,7 +1226,7 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
       const sheetData = new FormData();
       sheetData.append('name', formData.name);
       sheetData.append('phone', formData.phone);
-      sheetData.append('age', formData.age);
+      sheetData.append('age', formData.age || "N/A"); // تم السماح بتركه فارغاً
       sheetData.append('education', formData.education);
       sheetData.append('gender', formData.gender);
       sheetData.append('experience', formData.experience);
@@ -1110,6 +1235,8 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
       sheetData.append('cvUrl', finalCvUrl);
       sheetData.append('audioUrl', combinedAudioForSheet);
       sheetData.append('hrRecruiterName', formData.hrRecruiterName);
+      sheetData.append('email', formData.email || "N/A"); // تم السماح بتركه فارغاً
+      sheetData.append('nationalId', formData.nationalId || "N/A"); // تم السماح بتركه فارغاً
       sheetData.append('qaStatus', 'New'); 
 
       fetch(scriptUrl, { method: 'POST', body: sheetData, mode: 'no-cors' }).catch(e=>console.log(e));
@@ -1140,11 +1267,12 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
         jobTitle: selectedJob.title,
         jobId: selectedJob.id,
         status: "New", 
+        englishLevel: aiEvaluatedLevel,
         appliedAt: serverTimestamp()
       });
 
       alert("Candidate added successfully!");
-      setFormData({ jobId: "", name: "", phone: "", whatsapp: "", age: "", gender: "", education: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: "", audioUrl2: ""});
+      setFormData({ jobId: "", name: "", phone: "", whatsapp: "", age: "", gender: "", education: "", experience: "", hrRecruiterName: "", cvUrl: "", audioUrl: "", audioUrl2: "", email: "", nationalId: ""});
       setCvFile(null);
       setAudioFile(null);
       setAudioFile2(null);
@@ -1160,7 +1288,7 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
        <h3 className="text-3xl font-black mb-8 text-center text-white">Add New Candidate</h3>
        <form onSubmit={handleSubmit} className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <div className="space-y-2 text-left">
+             <div className="space-y-2 text-left w-full">
                <label className="block text-xs font-black text-gray-400 uppercase tracking-wide">Select Job *</label>
                <select required value={formData.jobId} onChange={e => setFormData({...formData, jobId: e.target.value})} className="w-full bg-white/5 p-5 rounded-3xl font-bold outline-none border border-white/5 focus:bg-white/10 focus:border-[#C48DFF] text-white transition-all shadow-sm">
                  <option value="" className="bg-gray-900">Choose Job...</option>
@@ -1181,21 +1309,27 @@ function RecruiterCandidateForm({ jobs, onAdded }) {
              <ApplySelect label="Education Status" icon={<GraduationCap size={18}/>} value={formData.education} options={["Student", "Graduate", "Drop-out", "Gap Year"]} onChange={v => setFormData({...formData, education: v})} required/>
              <ApplySelect label="Experience" icon={<Briefcase size={18}/>} value={formData.experience} options={["No Experience", "Less than 1 year", "1 Year", "2 Years", "3 Years", "4 Years", "5+ Years"]} onChange={v => setFormData({...formData, experience: v})} required/>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <ApplyField label="Age" type="tel" pattern="^[0-9]+$" title="Please enter numbers only" icon={<Calendar size={18}/>} placeholder="e.g. 25" value={formData.age} onChange={v => setFormData({...formData, age: v})} required/>
-             <div className="space-y-4 md:pl-2 text-center md:text-left">
-                <label className="block text-xs font-black text-gray-400 uppercase tracking-wide">CV (Link or File) - Optional</label>
-                <div className="flex gap-2 items-center">
-                  <input type="text" placeholder="CV Link" className="w-full bg-white/5 p-4 rounded-2xl outline-none border border-white/5 focus:border-white/20 text-white text-sm transition-all" value={formData.cvUrl} onChange={e => setFormData({...formData, cvUrl: e.target.value})}/>
-                  <div className="relative">
-                     <input type="file" id="cv-upload-form" accept=".pdf,.doc,.docx" onChange={e => setCvFile(e.target.files[0])} className="hidden"/>
-                     <label htmlFor="cv-upload-form" className={`w-12 h-12 rounded-2xl flex items-center justify-center cursor-pointer transition-all border ${cvFile ? 'bg-green-500/20 text-green-400 border-green-500/50' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'}`}>
-                        {cvFile ? <CheckCircle size={20}/> : <Upload size={20}/>}
-                     </label>
-                  </div>
-                </div>
-             </div>
+          
+          {/* تم إزالة شرط الـ required من العمر والإيميل والرقم القومي */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+             <ApplyField label="Age (Optional)" type="tel" pattern="^[0-9]+$" title="Please enter numbers only" icon={<Calendar size={18}/>} placeholder="e.g. 25" value={formData.age} onChange={v => setFormData({...formData, age: v})} required={false}/>
+             <ApplyField label="Email (Optional)" type="email" icon={<Mail size={18}/>} placeholder="ahmed@example.com" value={formData.email} onChange={v => setFormData({...formData, email: v})} required={false} />
+             <ApplyField label="National ID (Optional)" type="text" pattern="^[0-9]{14}$" title="Must be exactly 14 digits" icon={<FileText size={18}/>} placeholder="2990101..." value={formData.nationalId} onChange={v => setFormData({...formData, nationalId: v})} required={false} />
           </div>
+
+          <div className="space-y-4 text-left w-full bg-white/5 p-6 rounded-3xl border border-white/5">
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-wide">CV (Link or File) {selectedJob?.requireCv ? <span className="text-red-400">* Required</span> : "- Optional"}</label>
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                <input type="text" placeholder="CV Link (Drive, Docs, etc.)" className="w-full bg-white/5 p-4 rounded-2xl outline-none border border-white/5 focus:border-[#C48DFF] text-white text-sm transition-all" value={formData.cvUrl} onChange={e => setFormData({...formData, cvUrl: e.target.value})}/>
+                <span className="text-gray-500 text-xs font-bold">OR</span>
+                <div className="relative w-full md:w-auto">
+                   <input type="file" id="cv-upload-rec" accept=".pdf,.doc,.docx" onChange={e => setCvFile(e.target.files[0])} className="hidden"/>
+                   <label htmlFor="cv-upload-rec" className={`w-full md:w-48 py-4 px-5 rounded-2xl text-sm font-bold flex items-center justify-center cursor-pointer transition-all border ${cvFile ? 'bg-green-500/20 text-green-400 border-green-500/50' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'}`}>
+                      {cvFile ? <><CheckCircle size={18} className="mr-2"/> Selected</> : <><Upload size={18} className="mr-2"/> Upload File</>}
+                   </label>
+                </div>
+              </div>
+           </div>
 
           {/* Audio 1 */}
           <div className="bg-black/30 p-8 rounded-[2rem] border border-white/5">
@@ -1263,10 +1397,10 @@ function AdminPanelView({ jobs }) {
   const [editingRecruiter, setEditingRecruiter] = useState({ id: null, name: "" });
 
   const [form, setForm] = useState({ 
-    title: "", company: "", location: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "",
+    title: "", company: "", location: "", locationLink: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "",
     recordOneLabel: "Introduce yourself and record a voice note in English for at least two minutes to determine your level.",
-    requiresSecondRecord: false,
-    recordTwoLabel: ""
+    requiresSecondRecord: false, recordTwoLabel: "",
+    requireCv: false, requireNationalId: false, requireEmail: false
   });
   
   const [loading, setLoading] = useState(false);
@@ -1322,9 +1456,10 @@ function AdminPanelView({ jobs }) {
         await addDoc(collection(db, "jobs"), { ...form, createdAt: serverTimestamp(), order: jobs.length, isHidden: false });
       }
       setForm({ 
-        title: "", company: "", location: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "",
+        title: "", company: "", location: "", locationLink: "", language: "", salary: "", description: "", requirements: "", benefits: "", experience: "", shift: "",
         recordOneLabel: "Introduce yourself and record a voice note in English for at least two minutes to determine your level.",
-        requiresSecondRecord: false, recordTwoLabel: ""
+        requiresSecondRecord: false, recordTwoLabel: "",
+        requireCv: false, requireNationalId: false, requireEmail: false
       });
       alert("Job Saved Successfully");
     } catch (e) { alert(e.message); }
@@ -1482,6 +1617,28 @@ function AdminPanelView({ jobs }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <AdminField label="Experience" value={form.experience} placeholder="Entry Level" onChange={v => setForm({...form, experience: v})}/>
                 <AdminField label="Shift" value={form.shift} placeholder="Fixed" onChange={v => setForm({...form, shift: v})}/>
+              </div>
+
+              {/* لينك اللوكيشن الجديد */}
+              <AdminField label="Location Link (Google Maps)" value={form.locationLink} placeholder="https://maps.app.goo.gl/..." onChange={v => setForm({...form, locationLink: v})}/>
+
+              {/* === التحكم في الحقول الإجبارية (Dynamic Mandatory Fields) === */}
+              <div className="bg-black/30 p-6 rounded-[2rem] border border-white/5 space-y-4 mt-4">
+                <h4 className="font-black text-[#C48DFF] flex items-center gap-2"><FileText size={18}/> Mandatory Fields for Applicants</h4>
+                <div className="flex flex-col md:flex-row gap-6">
+                  <label className="flex items-center gap-2 text-sm font-bold text-white cursor-pointer hover:opacity-80 transition-opacity">
+                    <input type="checkbox" checked={form.requireCv} onChange={e => setForm({...form, requireCv: e.target.checked})} className="w-5 h-5 accent-green-500 cursor-pointer"/> 
+                    Require CV Upload
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-bold text-white cursor-pointer hover:opacity-80 transition-opacity">
+                    <input type="checkbox" checked={form.requireEmail} onChange={e => setForm({...form, requireEmail: e.target.checked})} className="w-5 h-5 accent-green-500 cursor-pointer"/> 
+                    Require Email Address
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-bold text-white cursor-pointer hover:opacity-80 transition-opacity">
+                    <input type="checkbox" checked={form.requireNationalId} onChange={e => setForm({...form, requireNationalId: e.target.checked})} className="w-5 h-5 accent-green-500 cursor-pointer"/> 
+                    Require National ID (14 digits)
+                  </label>
+                </div>
               </div>
 
               {/* === التحكم في الريكوردات (Dynamic Records) === */}
@@ -1867,12 +2024,12 @@ function Footer({ setView }) {
           <motion.div whileHover={{ scale: 1.02 }} className="bg-white/5 p-10 rounded-[2.5rem] border border-white/5 flex flex-col items-center shadow-sm">
              <Phone size={26} style={{ color: themeColors.accentPurple, marginBottom: "8px" }}/>
              <span className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-black">Phone / WhatsApp</span>
-             <p className="text-gray-200">01097717120</p>
+             <p className="text-gray-200">01099119352</p>
           </motion.div>
         </div>
         <div className="flex flex-col items-center md:items-end space-y-4">
            <div className="flex items-center gap-2 text-3xl font-black">
-              <img src={logoImg} alt="PEAKY SCOUTS" className="h-16 object-contain mb-2 drop-shadow-lg" />
+              <img src={logoImg} alt="Callify" className="h-16 object-contain mb-2 drop-shadow-lg" />
            </div>
            <p className="text-gray-400 text-sm font-medium">By order of the Peaky Scouts, we find the best jobs.</p>
            
@@ -1881,7 +2038,7 @@ function Footer({ setView }) {
              <motion.a href="https://www.instagram.com/Peakyscouts" target="_blank" whileHover={{ y:-5, color: "#E4405F" }}><Instagram size={22}/></motion.a>
              <motion.a href="https://www.tiktok.com/@peakyscouts" target="_blank" whileHover={{ y:-5, color: "#FFFFFF" }}><Video size={22}/></motion.a>
              <motion.a href="https://www.linkedin.com/company/peakyscouts/" target="_blank" whileHover={{ y:-5, color: "#0A66C2" }}><Linkedin size={22}/></motion.a>
-             <motion.a href="https://wa.me/201097717120" target="_blank" whileHover={{ y:-5, color: "#25D366" }}><Globe size={22}/></motion.a>
+             <motion.a href="https://wa.me/201099119352" target="_blank" whileHover={{ y:-5, color: "#25D366" }}><Globe size={22}/></motion.a>
            </div>
 
            <div className="flex gap-6 text-[10px] text-gray-500 uppercase tracking-widest pt-4">
